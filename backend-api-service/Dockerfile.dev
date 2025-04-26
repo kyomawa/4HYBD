@@ -1,0 +1,14 @@
+FROM rust:1.86.0-slim-bookworm
+
+WORKDIR /usr/src/app
+
+RUN cargo install cargo-watch \
+    && apt-get update \
+    && apt-get install -y pkg-config libssl-dev curl \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV CARGO_TARGET_DIR=/usr/src/app/target
+
+EXPOSE 8080
+
+CMD ["cargo", "watch", "--poll", "-i", "1", "-x", "run"]

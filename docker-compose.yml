@@ -1,0 +1,102 @@
+networks: 
+  4hybd_dev:
+    driver: bridge
+services:
+  traefik:
+    image: traefik:v3.3
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT_TRAEFIK}:80"
+      - "${HOST_PORT_TRAEFIK_DASHBOARD}:8080"
+    command: 
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.http.address=:80"
+      - "--ping=true"
+      - "--ping.entrypoint=http" 
+      - "--log.level=DEBUG"
+      - "--accesslog=true"     
+      - "--metrics.prometheus=true"
+      - "--metrics.prometheus.addEntryPointsLabels=true"
+      - "--metrics.prometheus.addServicesLabels=true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 25s
+    networks:
+      - 4hybd_dev
+  database:
+    image: mongo:latest
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand({ ping: 1 })"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 25s
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${DATABASE_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${DATABASE_ROOT_PASSWORD}
+    ports:
+      - "${HOST_PORT_MONGODB}:27017"
+    volumes:
+      - ./mongo-init-scripts:/docker-entrypoint-initdb.d
+    networks:
+    - 4hybd_dev
+
+  mobile-app-service:
+    build:
+      context: ./mobile-app-service
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./mobile-app-service:/app 
+      - /app/node_modules
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mobile.entrypoints=http"
+      - "traefik.http.services.mobile.loadbalancer.server.port=8100"
+      - "traefik.http.routers.mobile.rule=Host(`localhost`) && !PathPrefix(`/api`)"
+    environment:
+      - URL=${EXTERNAL_HOST_IP}
+      - CHOKIDAR_USEPOLLING=true
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8100"]
+      interval: 12s
+      timeout: 7s
+      retries: 7
+      start_period: 120s
+    networks:
+      - 4hybd_dev
+
+  backend-api-service:
+    build:
+      context: ./backend-api-service
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend-api-service:/usr/src/app
+      - target-volume:/usr/src/app/target
+    depends_on:
+      - database
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SIGNATURE: ${JWT_SIGNATURE}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.entrypoints=http"
+      - "traefik.http.services.api.loadbalancer.server.port=8080"
+      - "traefik.http.routers.api.rule=PathPrefix(`/api`)"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/health"]
+      interval: 12s
+      timeout: 7s
+      retries: 20
+      start_period: 120s
+    networks:
+      - 4hybd_dev
+
+volumes:
+  target-volume:
