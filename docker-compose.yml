@@ -30,6 +30,39 @@ services:
       start_period: 25s
     networks:
       - 4hybd_dev
+  minio:
+    image: 'quay.io/minio/minio:latest'
+    command: 'server /data --console-address ":9001"'
+    ports:
+      - "${HOST_PORT_MINIO_API}:9000"
+      - "${HOST_PORT_MINIO_CONSOLE}:9001"
+    environment:
+      - MINIO_SERVER_URL=${MINIO_SERVER_URL}
+      - MINIO_BROWSER_REDIRECT_URL=${MINIO_BROWSER_REDIRECT_URL}
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    volumes:
+      - 'minio-data:/data'
+    healthcheck:
+      test:
+        - CMD
+        - mc
+        - ready
+        - local
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.minio-api.entrypoints=http"
+      - "traefik.http.routers.minio-api.rule=Host(`localhost`) && PathPrefix(`/minio/api`)"
+      - "traefik.http.services.minio-api.loadbalancer.server.port=9000"
+      - "traefik.http.routers.minio-console.entrypoints=http"
+      - "traefik.http.routers.minio-console.rule=Host(`localhost`) && PathPrefix(`/minio/console`)"
+      - "traefik.http.services.minio-console.loadbalancer.server.port=9001"
+    networks:
+      - 4hybd_dev
   database:
     image: mongo:latest
     healthcheck:
@@ -100,3 +133,4 @@ services:
 
 volumes:
   target-volume:
+  minio-data:
