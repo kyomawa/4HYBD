@@ -3,7 +3,7 @@ use serde::Serialize;
 // =============================================================================================================================
 
 #[derive(Debug, Serialize)]
-pub struct ApiReponse<'a, T> {
+pub struct ApiResponse<'a, T> {
     success: bool,
     message: &'a str,
 
@@ -16,7 +16,7 @@ pub struct ApiReponse<'a, T> {
 
 // =============================================================================================================================
 
-impl<'a, T> ApiReponse<'a, T> {
+impl<'a, T> ApiResponse<'a, T> {
     pub fn success(message: &'a str, data: T) -> Self {
         Self {
             success: true,
