@@ -1,11 +1,10 @@
+use crate::utils::api_response::ApiResponse;
 use actix_web::{
     HttpResponse, Responder, get,
     web::{self},
 };
 use auth_controller::auth_routes;
 use user_controller::user_routes;
-
-use crate::utils::api_response::ApiResponse;
 
 pub mod auth_controller;
 pub mod user_controller;
@@ -25,7 +24,10 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
 
 #[get("/health")]
 async fn healthcheck() -> impl Responder {
-    HttpResponse::Ok().json(ApiResponse::success("🟢 Backend Service is Alive", ""))
+    HttpResponse::Ok().json(ApiResponse::success(
+        "🟢 Backend Service is Alive",
+        Some(()),
+    ))
 }
 
 // =============================================================================================================================
