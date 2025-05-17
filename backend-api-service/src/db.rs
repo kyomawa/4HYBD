@@ -7,10 +7,11 @@ use std::error::Error;
 pub struct Db {}
 
 impl Db {
-    pub async fn new(uri: &str) -> Result<Database, Box<dyn Error>> {
-        let client_options = ClientOptions::parse(std::env::var(uri).expect(
-            format!("❌ No env variable called {uri} was found in the .env file.").as_str(),
-        ))
+    pub async fn init(uri: &str) -> Result<Database, Box<dyn Error>> {
+        let client_options = ClientOptions::parse(
+            std::env::var(uri)
+                .expect("❌ No env variable called {uri} was found in the .env file."),
+        )
         .await?;
 
         let client = Client::with_options(client_options)?;

@@ -1,9 +1,7 @@
 use crate::utils::utils_fn::{
     LETTERS_REGEX, serialize_option_object_id_as_hex_string, trim, trim_lowercase,
 };
-use mongodb::bson::{
-    DateTime, oid::ObjectId, serde_helpers::serialize_bson_datetime_as_rfc3339_string,
-};
+use mongodb::bson::{DateTime, oid::ObjectId};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
@@ -31,11 +29,7 @@ pub struct User {
     pub role: UserRole,
     pub bio: String,
     pub avatar: Option<String>,
-
-    #[serde(serialize_with = "serialize_bson_datetime_as_rfc3339_string")]
     pub created_at: DateTime,
-
-    #[serde(serialize_with = "serialize_bson_datetime_as_rfc3339_string")]
     pub updated_at: DateTime,
 }
 

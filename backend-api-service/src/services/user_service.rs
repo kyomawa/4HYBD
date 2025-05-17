@@ -1,9 +1,8 @@
-use std::{error::Error, str::FromStr};
-
 use bcrypt::{DEFAULT_COST, hash};
 use bson::{DateTime, oid::ObjectId, to_document};
 use futures_util::TryStreamExt;
 use mongodb::{Collection, Cursor, Database, bson::doc, options::ReturnDocument};
+use std::{error::Error, str::FromStr};
 use validator::Validate;
 
 use crate::models::user_model::{CreateUser, UpdateUser, User};
