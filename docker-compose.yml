@@ -1,4 +1,4 @@
-networks: 
+networks:
   4hybd_dev:
     driver: bridge
 services:
@@ -8,15 +8,15 @@ services:
     ports:
       - "${HOST_PORT_TRAEFIK}:80"
       - "${HOST_PORT_TRAEFIK_DASHBOARD}:8080"
-    command: 
+    command:
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entryPoints.http.address=:80"
       - "--ping=true"
-      - "--ping.entrypoint=http" 
+      - "--ping.entrypoint=http"
       - "--log.level=DEBUG"
-      - "--accesslog=true"     
+      - "--accesslog=true"
       - "--metrics.prometheus=true"
       - "--metrics.prometheus.addEntryPointsLabels=true"
       - "--metrics.prometheus.addServicesLabels=true"
@@ -31,7 +31,7 @@ services:
     networks:
       - 4hybd_dev
   minio:
-    image: 'quay.io/minio/minio:latest'
+    image: "quay.io/minio/minio:latest"
     command: 'server /data --console-address ":9001"'
     ports:
       - "${HOST_PORT_MINIO_API}:9000"
@@ -42,7 +42,7 @@ services:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
     volumes:
-      - 'minio-data:/data'
+      - "minio-data:/data"
     healthcheck:
       test:
         - CMD
@@ -66,7 +66,8 @@ services:
   database:
     image: mongo:latest
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand({ ping: 1 })"]
+      test:
+        ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand({ ping: 1 })"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -79,22 +80,23 @@ services:
     volumes:
       - ./mongo-init-scripts:/docker-entrypoint-initdb.d
     networks:
-    - 4hybd_dev
+      - 4hybd_dev
 
   mobile-app-service:
     build:
       context: ./mobile-app-service
       dockerfile: Dockerfile.dev
     volumes:
-      - ./mobile-app-service:/app 
+      - ./mobile-app-service:/app
       - /app/node_modules
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.mobile.entrypoints=http"
       - "traefik.http.services.mobile.loadbalancer.server.port=8100"
       - "traefik.http.routers.mobile.rule=Host(`localhost`) && !PathPrefix(`/api`)"
+      - "traefik.http.routers.mobile.priority=20"
     environment:
-      - URL=${EXTERNAL_HOST_IP}
+      - API_URL=http://${EXTERNAL_HOST_IP}/api/
       - CHOKIDAR_USEPOLLING=true
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8100"]
