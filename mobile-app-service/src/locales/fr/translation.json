@@ -1,0 +1,47 @@
+{
+  "settings": {
+    "title": "Paramètres",
+    "notifications": {
+      "title": "Notifications",
+      "dailyReminder": "Rappel quotidien",
+      "reminderDescription": "Recevez une notification pour prendre votre photo quotidienne",
+      "notificationTime": "Heure de notification",
+      "timeDescription": "Choisissez l'heure à laquelle vous souhaitez être notifié",
+      "nextScheduled": "Prochaine notification programmée pour",
+      "enabled": "Notifications activées à",
+      "disabled": "Notifications désactivées"
+    },
+    "language": {
+      "title": "Langue",
+      "select": "Choisir la langue",
+      "fr": "Français",
+      "en": "Anglais"
+    },
+    "dataManagement": {
+      "title": "Gestion des données",
+      "clearData": "Effacer toutes les données",
+      "clearDescription": "Supprime toutes vos photos et réinitialise les paramètres"
+    },
+    "about": {
+      "title": "À propos",
+      "version": "Version",
+      "description": "Application de partage de photos inspirée de BeReal",
+      "copyright": "© 2025 BeUnreal"
+    },
+    "alerts": {
+      "success": "Succès",
+      "clearDataTitle": "Effacer toutes les données",
+      "clearDataMessage": "Cette action supprimera toutes vos photos et réinitialisera tous vos paramètres. Cette action est irréversible.",
+      "cancel": "Annuler",
+      "clearAll": "Tout effacer",
+      "ok": "OK",
+      "timeUpdated": "Heure de notification mise à jour: ",
+      "dataCleared": "Toutes les données ont été effacées",
+      "languageChanged": "Langue modifiée en français"
+    },
+    "time": {
+      "title": "Choisir l'heure",
+      "save": "Enregistrer"
+    }
+  }
+} 

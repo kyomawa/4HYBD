@@ -1,0 +1,48 @@
+.edit-profile-page {
+  --background: var(--beunreal-background);
+}
+
+.profile-picture-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 24px 0;
+}
+
+.profile-avatar {
+  width: 100px;
+  height: 100px;
+  border: 2px solid var(--beunreal-border);
+  background-color: var(--beunreal-background);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.default-avatar {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--beunreal-primary);
+  color: var(--beunreal-surface);
+  font-size: 40px;
+  font-weight: 600;
+}
+
+.change-photo-button {
+  --color: var(--ion-color-primary);
+  font-size: 14px;
+}
+
+.form-container {
+  padding: 0 16px;
+}
+
+.form-item {
+  --background: transparent;
+  --border-color: var(--beunreal-border);
+  --highlight-color-focused: var(--ion-color-primary);
+  margin-bottom: 16px;
+  border-radius: 8px;
+}

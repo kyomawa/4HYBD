@@ -1,0 +1,174 @@
+.user-profile-page {
+  --background: var(--beunreal-background);
+}
+
+.user-profile-content {
+  --background: var(--beunreal-background);
+}
+
+.profile-header {
+  padding: 20px;
+  background-color: var(--beunreal-surface);
+  border-bottom: 1px solid var(--beunreal-border);
+}
+
+.profile-info {
+  display: flex;
+  margin-bottom: 20px;
+}
+
+.profile-avatar-container {
+  margin-right: 20px;
+}
+
+.profile-avatar {
+  width: 80px;
+  height: 80px;
+  border: 2px solid var(--beunreal-border);
+  background-color: var(--beunreal-background);
+}
+
+.default-avatar {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--beunreal-primary);
+  color: var(--beunreal-surface);
+  font-size: 30px;
+  font-weight: 600;
+}
+
+.profile-stats {
+  display: flex;
+  flex-grow: 1;
+  align-items: center;
+  justify-content: space-around;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-item strong {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--beunreal-text);
+}
+
+.stat-item span {
+  font-size: 14px;
+  color: var(--beunreal-text-secondary);
+}
+
+.profile-details {
+  margin-bottom: 20px;
+}
+
+.profile-details h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  color: var(--beunreal-text);
+}
+
+.full-name {
+  font-size: 14px;
+  color: var(--beunreal-text-secondary);
+  margin: 0 0 8px;
+}
+
+.bio {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--beunreal-text);
+  margin: 0;
+}
+
+.profile-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.follow-button,
+.message-button {
+  flex: 1;
+  height: 36px;
+  --border-radius: 8px;
+  font-size: 14px;
+}
+
+.buttons-loading {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  height: 36px;
+  align-items: center;
+}
+
+.profile-content {
+  margin-bottom: 20px;
+}
+
+ion-segment {
+  --background: var(--beunreal-surface);
+  border-bottom: 1px solid var(--beunreal-border);
+}
+
+.posts-grid {
+  padding: 2px;
+}
+
+.post-thumbnail {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 4px;
+  margin: 2px;
+}
+
+.post-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.post-likes-indicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
+.empty-posts {
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 20px;
+  text-align: center;
+}
+
+.loading-container ion-spinner {
+  margin-bottom: 16px;
+}
+
+.error-container ion-text {
+  margin-bottom: 16px;
+}

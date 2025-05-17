@@ -1,0 +1,47 @@
+{
+  "settings": {
+    "title": "Settings",
+    "notifications": {
+      "title": "Notifications",
+      "dailyReminder": "Daily Reminder",
+      "reminderDescription": "Get a notification to take your daily photo",
+      "notificationTime": "Notification Time",
+      "timeDescription": "Choose the time you want to be notified",
+      "nextScheduled": "Next notification scheduled for",
+      "enabled": "Notifications enabled at",
+      "disabled": "Notifications disabled"
+    },
+    "language": {
+      "title": "Language",
+      "select": "Select language",
+      "fr": "French",
+      "en": "English"
+    },
+    "dataManagement": {
+      "title": "Data Management",
+      "clearData": "Clear All Data",
+      "clearDescription": "Deletes all your photos and resets all settings"
+    },
+    "about": {
+      "title": "About",
+      "version": "Version",
+      "description": "Photo sharing app inspired by BeReal",
+      "copyright": "© 2025 BeUnreal"
+    },
+    "alerts": {
+      "success": "Success",
+      "clearDataTitle": "Clear All Data",
+      "clearDataMessage": "This action will delete all your photos and reset all your settings. This action is irreversible.",
+      "cancel": "Cancel",
+      "clearAll": "Clear All",
+      "ok": "OK",
+      "timeUpdated": "Notification time updated: ",
+      "dataCleared": "All data has been cleared",
+      "languageChanged": "Language changed to English"
+    },
+    "time": {
+      "title": "Choose Time",
+      "save": "Save"
+    }
+  }
+} 

@@ -1,0 +1,142 @@
+.login-page {
+  --background: var(--ion-background-color);
+}
+
+.login-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100%;
+  padding: 20px;
+}
+
+.logo-container {
+  margin-bottom: 40px;
+  animation: fade-in 0.8s ease-in-out;
+}
+
+.app-logo {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  border-radius: 16px;
+  margin: 0 auto;
+  display: block;
+}
+
+.logo-icon {
+  font-size: 64px;
+  color: var(--ion-color-dark);
+}
+
+.app-name {
+  font-size: 32px;
+  font-weight: 700;
+  margin-top: 10px;
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.form-container {
+  background-color: var(--ion-card-background);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  animation: slide-up 0.5s ease-out;
+}
+
+.form-item {
+  --background: transparent;
+  --border-color: var(--ion-color-light);
+  --highlight-color-focused: var(--ion-color-primary);
+  margin-bottom: 16px;
+  border-radius: 8px;
+}
+
+.error-message {
+  margin: 12px 0;
+  font-size: 14px;
+  animation: shake 0.4s ease-in-out;
+}
+
+.login-button,
+.register-button {
+  margin-top: 20px;
+  height: 48px;
+  --border-radius: 8px;
+  font-weight: 600;
+}
+
+.separator {
+  display: flex;
+  align-items: center;
+  margin: 24px 0;
+}
+
+.line {
+  flex: 1;
+  height: 1px;
+  background-color: var(--ion-color-medium-shade);
+}
+
+.or {
+  padding: 0 16px;
+  color: var(--ion-color-medium);
+  font-size: 14px;
+}
+
+/* Animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-5px);
+  }
+  40%,
+  80% {
+    transform: translateX(5px);
+  }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .login-page {
+    --background: var(--ion-background-color-dark, #121212);
+  }
+
+  .logo-icon {
+    color: var(--ion-color-light);
+  }
+
+  .app-name {
+    color: #ffffff;
+  }
+
+  .form-container {
+    background-color: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  }
+}

@@ -1,0 +1,119 @@
+.settings-page {
+  --background: var(--ion-background-color);
+}
+
+.settings-list {
+  margin-top: 12px;
+  padding: 0 8px;
+}
+
+.settings-section {
+  margin-bottom: 24px;
+}
+
+.section-header {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--ion-color-primary);
+  letter-spacing: 0.5px;
+  margin: 16px 0 4px 0;
+}
+
+.settings-item {
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --inner-padding-end: 8px;
+  --background: var(--ion-card-background);
+  --border-radius: 12px;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.settings-item ion-icon {
+  font-size: 22px;
+  margin-right: 16px;
+}
+
+.settings-item-header {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.settings-item-subtext {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--ion-color-medium);
+}
+
+.danger-item {
+  --background: rgba(var(--ion-color-danger-rgb), 0.07);
+}
+
+.danger-item ion-label {
+  color: var(--ion-color-danger) !important;
+}
+
+.about-card {
+  margin: 16px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  text-align: center;
+  padding: 16px;
+}
+
+.about-card h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  color: var(--ion-color-dark);
+}
+
+.about-card p {
+  margin-bottom: 8px;
+  color: var(--ion-color-medium);
+}
+
+.app-logo {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  border-radius: 16px;
+  display: block;
+}
+
+.copyright {
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--ion-color-medium);
+}
+
+.notification-badge {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.time-picker-modal ion-datetime {
+  width: 100%;
+  max-width: 350px;
+  margin: 0 auto;
+  --background: var(--ion-background-color);
+}
+
+.notification-status {
+  padding: 8px 16px;
+  margin: 8px 0;
+  border-radius: 8px;
+  background: rgba(var(--ion-color-success-rgb), 0.1);
+  color: var(--ion-color-success);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+}
+
+.notification-status ion-icon {
+  margin-right: 8px;
+}

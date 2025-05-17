@@ -1,0 +1,45 @@
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px 0;
+}
+
+.loading-container ion-spinner {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 10px;
+}
+
+.time-picker-container {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.time-picker-container ion-datetime {
+  width: 100%;
+  max-width: 350px;
+  border-radius: 8px;
+  --background: var(--ion-color-light);
+  padding: 10px;
+}
+
+.notification-description {
+  margin: 20px 0;
+  padding: 0 16px;
+}
+
+.notification-description p {
+  color: var(--ion-color-medium);
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.button-container {
+  margin: 20px 0;
+  padding: 0 16px;
+}

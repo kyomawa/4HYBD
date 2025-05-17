@@ -1,0 +1,339 @@
+/* App.css - Global styles */
+
+/* Dark mode theme with black and white aesthetic */
+:root {
+  /* Light mode colors */
+  --beunreal-background: #f8f8f8;
+  --beunreal-surface: #ffffff;
+  --beunreal-primary: #262626;
+  --beunreal-secondary: #8e8e8e;
+  --beunreal-accent: #0095f6;
+  --beunreal-text: #262626;
+  --beunreal-text-secondary: #8e8e8e;
+  --beunreal-border: #dbdbdb;
+  --beunreal-danger: #ed4956;
+  --beunreal-success: #2ecc71;
+  --beunreal-warning: #f39c12;
+  --beunreal-overlay: rgba(0, 0, 0, 0.5);
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --beunreal-background: #121212;
+    --beunreal-surface: #1e1e1e;
+    --beunreal-primary: #ffffff;
+    --beunreal-secondary: #a8a8a8;
+    --beunreal-accent: #0095f6;
+    --beunreal-text: #ffffff;
+    --beunreal-text-secondary: #a8a8a8;
+    --beunreal-border: #383838;
+    --beunreal-danger: #ed4956;
+    --beunreal-success: #2ecc71;
+    --beunreal-warning: #f39c12;
+    --beunreal-overlay: rgba(0, 0, 0, 0.7);
+  }
+
+  /* Override Ionic variables for dark mode */
+  :root {
+    --ion-background-color: var(--beunreal-background);
+    --ion-background-color-rgb: 18, 18, 18;
+    --ion-text-color: var(--beunreal-text);
+    --ion-text-color-rgb: 255, 255, 255;
+    --ion-color-step-50: #1e1e1e;
+    --ion-color-step-100: #2a2a2a;
+    --ion-color-step-150: #363636;
+    --ion-color-step-200: #414141;
+    --ion-color-step-250: #4d4d4d;
+    --ion-color-step-300: #595959;
+    --ion-color-step-350: #656565;
+    --ion-color-step-400: #717171;
+    --ion-color-step-450: #7d7d7d;
+    --ion-color-step-500: #898989;
+    --ion-color-step-550: #949494;
+    --ion-color-step-600: #a0a0a0;
+    --ion-color-step-650: #acacac;
+    --ion-color-step-700: #b8b8b8;
+    --ion-color-step-750: #c4c4c4;
+    --ion-color-step-800: #d0d0d0;
+    --ion-color-step-850: #dbdbdb;
+    --ion-color-step-900: #e7e7e7;
+    --ion-color-step-950: #f3f3f3;
+
+    --ion-item-background: var(--beunreal-surface);
+    --ion-card-background: var(--beunreal-surface);
+    --ion-toolbar-background: var(--beunreal-surface);
+    --ion-tab-bar-background: var(--beunreal-surface);
+  }
+}
+
+/* Define Ionic color variables */
+:root {
+  --ion-color-primary: var(--beunreal-accent);
+  --ion-color-primary-rgb: 0, 149, 246;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #0082d9;
+  --ion-color-primary-tint: #1aa0f7;
+
+  --ion-color-secondary: var(--beunreal-secondary);
+  --ion-color-secondary-rgb: 142, 142, 142;
+  --ion-color-secondary-contrast: #ffffff;
+  --ion-color-secondary-contrast-rgb: 255, 255, 255;
+  --ion-color-secondary-shade: #7d7d7d;
+  --ion-color-secondary-tint: #9a9a9a;
+
+  --ion-color-danger: var(--beunreal-danger);
+  --ion-color-success: var(--beunreal-success);
+  --ion-color-warning: var(--beunreal-warning);
+}
+
+/* Tab Bar Styling */
+.app-tab-bar {
+  --border-width: 0;
+  --ion-tab-bar-background: var(--beunreal-surface);
+  border-top: 1px solid var(--beunreal-border);
+  padding-bottom: env(safe-area-inset-bottom);
+  height: calc(56px + env(safe-area-inset-bottom));
+}
+
+.capture-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.capture-button-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(45deg, #000000, #262626);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.capture-icon {
+  color: #ffffff;
+  font-size: 24px;
+}
+
+/* Disabled state for capture button */
+.capture-tab[aria-disabled="true"] .capture-button-wrapper {
+  opacity: 0.5;
+  background: #888;
+}
+
+/* General Style Overrides */
+ion-content {
+  --background: var(--beunreal-background);
+}
+
+ion-toolbar {
+  --background: var(--beunreal-surface);
+  --border-style: solid;
+  --border-color: var(--beunreal-border);
+  --border-width: 0 0 1px 0;
+}
+
+ion-item {
+  --background: var(--beunreal-surface);
+  --border-color: var(--beunreal-border);
+}
+
+ion-card {
+  background: var(--beunreal-surface);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+ion-button {
+  --box-shadow: none;
+  font-weight: 600;
+}
+
+/* Typography */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--beunreal-text);
+  font-weight: 700;
+}
+
+p {
+  color: var(--beunreal-text);
+  line-height: 1.5;
+}
+
+.text-muted {
+  color: var(--beunreal-text-secondary);
+}
+
+/* Transitions */
+.ion-page {
+  animation: fade-in 0.2s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Custom animations */
+.slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+/* Common layout classes */
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-container {
+  padding: 16px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--beunreal-text);
+}
+
+.avatar {
+  border-radius: 50%;
+  object-fit: cover;
+  background-color: var(--beunreal-border);
+}
+
+.spinner-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  flex-direction: column;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.empty-state-icon {
+  font-size: 64px;
+  color: var(--beunreal-text-secondary);
+  margin-bottom: 16px;
+}
+
+.empty-state-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--beunreal-text);
+}
+
+.empty-state-message {
+  color: var(--beunreal-text-secondary);
+  margin-bottom: 24px;
+}
+
+/* App Loading Screen */
+.app-loading-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--beunreal-background);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.app-loading-content {
+  text-align: center;
+  max-width: 300px;
+  padding: 20px;
+}
+
+.app-loading-content .app-logo {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 20px;
+  border-radius: 20px;
+}
+
+.app-loading-content h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: var(--beunreal-text);
+}
+
+.app-loading-content ion-spinner {
+  margin-bottom: 16px;
+}
+
+.app-loading-content p {
+  color: var(--beunreal-text-secondary);
+  font-size: 16px;
+}
+
+/* Offline Banner */
+.offline-banner {
+  background-color: var(--beunreal-warning);
+  color: var(--ion-color-warning-contrast);
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Story Creator Button */
+.create-button-icon {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(45deg, #000000, #262626);
+  border-radius: 50%;
+  color: white;
+}
+
+.create-button-icon ion-icon {
+  font-size: 24px;
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

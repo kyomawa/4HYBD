@@ -1,0 +1,87 @@
+.camera-view-content {
+  --background: #000;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.camera-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #1a1a1a;
+  width: 100%;
+  height: 100%;
+}
+
+.camera-instructions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  text-align: center;
+  padding: 20px;
+}
+
+.camera-instructions ion-text {
+  color: #ffffff;
+  font-size: 18px;
+}
+
+.camera-instructions ion-button {
+  --background: var(--ion-color-primary);
+  --color: white;
+  --border-radius: 50px;
+  --padding-start: 20px;
+  --padding-end: 20px;
+  font-weight: 500;
+}
+
+.camera-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  height: 100%;
+}
+
+.camera-loading ion-spinner {
+  --color: var(--ion-color-primary);
+  width: 48px;
+  height: 48px;
+}
+
+.camera-loading ion-text {
+  color: #ffffff;
+  font-size: 16px;
+}
+
+.camera-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px;
+  text-align: center;
+}
+
+.camera-error ion-text {
+  font-size: 16px;
+}
+
+/* Media queries for larger screens */
+@media (min-width: 768px) {
+  .camera-container {
+    max-width: 500px;
+    max-height: 80vh;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+}

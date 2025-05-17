@@ -1,0 +1,195 @@
+.search-page {
+  --background: var(--beunreal-background);
+}
+
+.search-header {
+  background-color: var(--beunreal-surface);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--beunreal-border);
+}
+
+ion-searchbar {
+  --background: var(--beunreal-background);
+  --color: var(--beunreal-text);
+  --placeholder-color: var(--beunreal-text-secondary);
+  --icon-color: var(--beunreal-text-secondary);
+  --clear-button-color: var(--beunreal-text-secondary);
+  --border-radius: 10px;
+}
+
+.suggestions-container {
+  padding: 16px;
+  animation: fade-in 0.3s ease-out;
+}
+
+.suggestions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.suggestions-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--beunreal-text);
+}
+
+.suggestions-grid {
+  --ion-grid-padding: 0;
+}
+
+.suggestion-card {
+  background-color: var(--beunreal-surface);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease;
+}
+
+.suggestion-card:active {
+  transform: scale(0.98);
+}
+
+.suggestion-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-bottom: 12px;
+  background-color: var(--beunreal-border);
+  position: relative;
+}
+
+.suggestion-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.suggestion-username {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.suggestion-username h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--beunreal-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.suggestion-actions {
+  width: 100%;
+}
+
+.follow-button {
+  width: 100%;
+  height: 32px;
+  --border-radius: 8px;
+  font-weight: 500;
+  font-size: 12px;
+  --padding-start: 8px;
+  --padding-end: 8px;
+}
+
+.follow-button.following {
+  --background: var(--beunreal-accent);
+  --color: white;
+}
+
+.user-item {
+  --background: var(--beunreal-surface);
+  --border-color: var(--beunreal-border);
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --inner-padding-end: 0;
+}
+
+.user-item ion-label h2 {
+  font-weight: 600;
+  color: var(--beunreal-text);
+  font-size: 15px;
+}
+
+.user-item ion-label p {
+  color: var(--beunreal-text-secondary);
+  font-size: 13px;
+}
+
+.default-avatar {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--beunreal-primary);
+  color: var(--beunreal-surface);
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.search-results {
+  background-color: var(--beunreal-surface);
+  animation: fade-in 0.3s ease-out;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  animation: fade-in 0.3s ease-out;
+}
+
+.empty-state-icon {
+  font-size: 64px;
+  color: var(--beunreal-text-secondary);
+  margin-bottom: 16px;
+}
+
+.empty-state-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--beunreal-text);
+}
+
+.empty-state-message {
+  color: var(--beunreal-text-secondary);
+  margin: 0 0 20px;
+  font-size: 14px;
+}
+
+.spinner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+}
+
+.spinner-container ion-spinner {
+  margin-bottom: 16px;
+}
+
+/* Animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

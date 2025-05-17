@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BeUnreal</string>
+    <string name="title_activity_main">BeUnreal</string>
+    <string name="package_name">io.ionic.beunreal</string>
+    <string name="custom_url_scheme">io.ionic.beunreal</string>
+    <string name="notification_channel_name">BeUnreal Daily Reminder</string>
+    <string name="notification_channel_description">Daily reminder to take your BeUnreal photo</string>
+    <string name="notification_icon">logo</string>
+</resources>

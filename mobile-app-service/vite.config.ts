@@ -8,8 +8,15 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [
     react(),
-    legacy()
+    legacy({
+      targets: ['defaults', 'not IE 11'],
+    })
   ],
+  build: {
+    minify: 'terser',
+    sourcemap: false,
+    chunkSizeWarningLimit: 1200,
+  },
   test: {
     globals: true,
     environment: 'jsdom',

@@ -1,0 +1,242 @@
+.story-viewer-container {
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  background-color: #000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.story-header {
+  --background: transparent;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
+
+.story-header ion-toolbar {
+  --background: linear-gradient(to bottom, rgba(0, 0, 0, 0.4), transparent);
+}
+
+.story-progress {
+  --progress-background: rgba(255, 255, 255, 0.3);
+  --buffer-background: rgba(255, 255, 255, 0.1);
+  height: 3px;
+  margin-bottom: 8px;
+}
+
+.story-user-info {
+  display: flex;
+  align-items: center;
+  margin-left: 12px;
+  margin-right: 12px;
+}
+
+.story-avatar {
+  width: 36px;
+  height: 36px;
+  margin-right: 10px;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.username {
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.story-meta {
+  display: flex;
+  align-items: center;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+}
+
+.time {
+  display: flex;
+  align-items: center;
+  margin-right: 12px;
+}
+
+.location {
+  display: flex;
+  align-items: center;
+}
+
+.time ion-icon,
+.location ion-icon {
+  margin-right: 4px;
+  font-size: 14px;
+}
+
+.story-image-container {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.story-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.loading-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+}
+
+.navigation-overlay {
+  position: absolute;
+  top: 70px;
+  bottom: 100px;
+  left: 0;
+  right: 0;
+  display: flex;
+  z-index: 10;
+}
+
+.nav-left,
+.nav-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.nav-left {
+  justify-content: flex-start;
+  padding-left: 10px;
+}
+
+.nav-right {
+  justify-content: flex-end;
+  padding-right: 10px;
+}
+
+.nav-left ion-icon,
+.nav-right ion-icon {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 32px;
+}
+
+.story-footer {
+  --background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.story-actions {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+}
+
+.story-stat {
+  margin-left: 8px;
+  opacity: 0.8;
+}
+
+.message-container {
+  padding: 8px 16px;
+  margin-bottom: 8px;
+}
+
+.message-input-item {
+  --background: rgba(255, 255, 255, 0.1);
+  --border-radius: 24px;
+  --highlight-height: 0;
+  --inner-padding-end: 4px;
+}
+
+.message-input {
+  --padding-start: 12px;
+  --placeholder-color: rgba(255, 255, 255, 0.6);
+  --placeholder-opacity: 1;
+  --color: #fff;
+}
+
+.default-avatar {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--ion-color-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Réactions */
+.reactions-container {
+  position: absolute;
+  bottom: 120px;
+  left: 16px;
+  right: 16px;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  display: flex;
+  justify-content: space-around;
+  padding: 16px;
+  z-index: 200;
+  animation: slide-up 0.2s ease-out;
+}
+
+.reaction-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.reaction-button:active {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: scale(0.95);
+}
+
+.reaction-button ion-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.reaction-button span {
+  color: #fff;
+  font-size: 12px;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

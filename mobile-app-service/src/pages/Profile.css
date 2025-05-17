@@ -1,0 +1,231 @@
+.profile-page {
+  --background: var(--beunreal-background);
+}
+
+.profile-header {
+  padding: 20px;
+  background-color: var(--beunreal-surface);
+  border-bottom: 1px solid var(--beunreal-border);
+  animation: slide-up 0.3s ease-out;
+}
+
+.profile-avatar-container {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.profile-avatar {
+  width: 96px;
+  height: 96px;
+  border: 2px solid var(--beunreal-border);
+  background-color: var(--beunreal-background);
+  overflow: hidden;
+  position: relative;
+}
+
+.default-avatar {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--beunreal-primary);
+  color: var(--beunreal-surface);
+  font-size: 40px;
+  font-weight: 600;
+}
+
+.edit-avatar-icon {
+  position: absolute;
+  bottom: 0;
+  right: calc(50% - 48px);
+  background-color: var(--beunreal-accent);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 14px;
+  border: 2px solid var(--beunreal-surface);
+}
+
+.profile-username {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.profile-username h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: var(--beunreal-text);
+}
+
+.profile-fullname {
+  font-size: 16px;
+  color: var(--beunreal-text-secondary);
+  margin: 0;
+}
+
+.profile-stats {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-item strong {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--beunreal-text);
+}
+
+.stat-item span {
+  font-size: 14px;
+  color: var(--beunreal-text-secondary);
+}
+
+.profile-bio {
+  text-align: center;
+  margin-bottom: 16px;
+  padding: 0 20px;
+}
+
+.profile-bio p {
+  font-size: 14px;
+  color: var(--beunreal-text);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.profile-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.edit-profile-button {
+  --border-radius: 8px;
+  --border-color: var(--beunreal-border);
+  --color: var(--beunreal-text);
+  font-weight: 500;
+  height: 36px;
+}
+
+.options-button {
+  --border-radius: 8px;
+  --color: var(--beunreal-text);
+  height: 36px;
+  min-width: 36px;
+}
+
+.profile-content {
+  margin-bottom: 20px;
+}
+
+.profile-segment {
+  background-color: var(--beunreal-surface);
+  border-bottom: 1px solid var(--beunreal-border);
+  --background: var(--beunreal-surface);
+}
+
+.posts-grid {
+  padding: 2px;
+}
+
+.post-thumbnail {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 4px;
+  margin: 2px;
+}
+
+.post-thumbnail ion-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.post-likes-indicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  animation: fade-in 0.3s ease-out;
+}
+
+.empty-state-icon {
+  font-size: 64px;
+  color: var(--beunreal-text-secondary);
+  margin-bottom: 16px;
+}
+
+.empty-state-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--beunreal-text);
+}
+
+.empty-state-message {
+  color: var(--beunreal-text-secondary);
+  margin: 0 0 20px;
+  font-size: 14px;
+}
+
+.spinner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+}
+
+.spinner-container ion-spinner {
+  margin-bottom: 16px;
+}
+
+/* Animations */
+@keyframes slide-up {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
