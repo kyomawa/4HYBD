@@ -2,6 +2,8 @@ use crate::utils::utils_fn::{LETTERS_REGEX, trim, trim_lowercase};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
+use super::user_model::Location;
+
 // =============================================================================================================================
 
 #[derive(Serialize, Deserialize, Validate)]
@@ -55,6 +57,7 @@ pub struct AuthRegister {
 
     #[validate(url)]
     pub avatar: Option<String>,
+    pub location: Location,
 }
 
 // =============================================================================================================================

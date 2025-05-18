@@ -1,7 +1,7 @@
 use crate::utils::utils_fn::{
     LETTERS_REGEX, serialize_option_object_id_as_hex_string, trim, trim_lowercase,
 };
-use mongodb::bson::{DateTime, oid::ObjectId};
+use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
@@ -11,6 +11,15 @@ use validator::Validate;
 pub enum UserRole {
     User,
     Admin,
+}
+
+// =============================================================================================================================
+
+#[derive(Serialize, Deserialize)]
+pub struct Location {
+    #[serde(rename = "type")]
+    pub location_type: String,
+    pub coordinates: [f64; 2],
 }
 
 // =============================================================================================================================
@@ -29,8 +38,7 @@ pub struct User {
     pub role: UserRole,
     pub bio: String,
     pub avatar: Option<String>,
-    pub created_at: DateTime,
-    pub updated_at: DateTime,
+    pub location: Location,
 }
 
 // =============================================================================================================================
@@ -72,6 +80,7 @@ pub struct CreateUser {
 
     #[validate(url)]
     pub avatar: Option<String>,
+    pub location: Location,
 }
 
 // =============================================================================================================================
@@ -113,6 +122,7 @@ pub struct UpdateUser {
 
     #[validate(url)]
     pub avatar: Option<String>,
+    pub location: Location,
 }
 
 // =============================================================================================================================

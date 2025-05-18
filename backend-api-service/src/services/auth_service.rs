@@ -6,7 +6,6 @@ use crate::{
     utils::jwt::encode_external_jwt,
 };
 use bcrypt::{DEFAULT_COST, hash, verify};
-use bson::DateTime;
 use mongodb::{Collection, Database, bson::doc};
 use std::{error::Error, thread, time::Duration};
 use validator::Validate;
@@ -74,8 +73,7 @@ async fn create_basic_user(db: &Database, payload: AuthRegister) -> Result<User,
         avatar: payload.avatar,
         bio: payload.bio,
         role: UserRole::User,
-        created_at: DateTime::now(),
-        updated_at: DateTime::now(),
+        location: payload.location,
     };
 
     let collection: Collection<User> = db.collection("users");
