@@ -25,10 +25,23 @@ import {
   IonItem,
   IonLabel,
   IonModal,
+  IonBackButton,
+  IonButtons,
 } from "@ionic/react";
-import { trash, ellipsisVertical, calendar, time, chevronDownCircle, expandOutline, closeCircle } from "ionicons/icons";
+import {
+  trash,
+  ellipsisVertical,
+  calendar,
+  time,
+  chevronDownCircle,
+  expandOutline,
+  closeCircle,
+  share,
+} from "ionicons/icons";
 import usePhotos from "../hooks/usePhotos";
 import { PhotoData } from "../services/camera.service";
+import { getAuthToken } from "../services/auth.service";
+import { API_URL } from "../config";
 import "./Gallery.css";
 
 const Gallery: React.FC = () => {
@@ -38,6 +51,9 @@ const Gallery: React.FC = () => {
   const [showDeleteAlert, setShowDeleteAlert] = useState<boolean>(false);
   const [showDeleteAllAlert, setShowDeleteAllAlert] = useState<boolean>(false);
   const [showModal, setShowModal] = useState<boolean>(false);
+  const [showShareAlert, setShowShareAlert] = useState<boolean>(false);
+  const [isSharing, setIsSharing] = useState<boolean>(false);
+  const [shareMessage, setShareMessage] = useState<string>("");
 
   const handleRefresh = async (event: CustomEvent<RefresherEventDetail>) => {
     await refreshPhotos();
@@ -84,10 +100,61 @@ const Gallery: React.FC = () => {
     setShowModal(true);
   };
 
+  const handleSharePhoto = async () => {
+    if (!selectedPhoto) return;
+
+    setIsSharing(true);
+
+    try {
+      const token = await getAuthToken();
+      if (!token) {
+        setShareMessage("Authentication required to share photo");
+        setShowShareAlert(true);
+        return;
+      }
+
+      // Check if photo has a server URL, if not it needs to be uploaded first
+      if (!selectedPhoto.serverUrl) {
+        setShareMessage("This photo needs to be uploaded to the server first. Please try again when you're online.");
+        setShowShareAlert(true);
+        return;
+      }
+
+      // Share to the social feed
+      const response = await fetch(`${API_URL}/api/stories/share`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          photo_url: selectedPhoto.serverUrl,
+          caption: "Shared from my gallery",
+        }),
+      });
+
+      if (response.ok) {
+        setShareMessage("Photo shared successfully to your social feed!");
+      } else {
+        const errorData = await response.json();
+        setShareMessage(errorData.message || "Failed to share photo");
+      }
+    } catch (error) {
+      console.error("Error sharing photo:", error);
+      setShareMessage("Failed to share photo. Please try again later.");
+    } finally {
+      setIsSharing(false);
+      setShowShareAlert(true);
+    }
+  };
+
   return (
     <IonPage>
       <IonHeader>
         <IonToolbar color="primary">
+          <IonButtons slot="start">
+            <IonBackButton defaultHref="/app/profile" />
+          </IonButtons>
           <IonTitle>Gallery</IonTitle>
           {photos.length > 0 && (
             <IonButton fill="clear" color="light" slot="end" onClick={() => setShowDeleteAllAlert(true)}>
@@ -126,7 +193,7 @@ const Gallery: React.FC = () => {
               <h2>No photos yet</h2>
               <p>Take your first photo to see it here!</p>
             </IonText>
-            <IonButton routerLink="/home" color="primary">
+            <IonButton routerLink="/app/home" color="primary">
               Take a Photo
             </IonButton>
           </div>
@@ -157,6 +224,20 @@ const Gallery: React.FC = () => {
                           <IonIcon icon={time} slot="start" />
                           <IonLabel>{formatTime(photo.timestamp)}</IonLabel>
                         </IonItem>
+                        {photo.location && (
+                          <IonItem lines="none" className="photo-info">
+                            <IonIcon name="location" slot="start" />
+                            <IonLabel>
+                              {photo.location.latitude.toFixed(6)}, {photo.location.longitude.toFixed(6)}
+                            </IonLabel>
+                          </IonItem>
+                        )}
+                        {photo.serverUrl && (
+                          <IonItem lines="none" className="photo-info">
+                            <IonIcon name="cloud-done" slot="start" />
+                            <IonLabel>Synced to server</IonLabel>
+                          </IonItem>
+                        )}
                       </IonCardSubtitle>
                     </IonCardHeader>
 
@@ -177,6 +258,11 @@ const Gallery: React.FC = () => {
           isOpen={showActionSheet}
           onDidDismiss={() => setShowActionSheet(false)}
           buttons={[
+            {
+              text: "Share to Social Feed",
+              icon: share,
+              handler: handleSharePhoto,
+            },
             {
               text: "Delete",
               role: "destructive",
@@ -235,6 +321,15 @@ const Gallery: React.FC = () => {
               handler: handleDeleteAllPhotos,
             },
           ]}
+        />
+
+        {/* Alert for share result */}
+        <IonAlert
+          isOpen={showShareAlert}
+          onDidDismiss={() => setShowShareAlert(false)}
+          header="Share Photo"
+          message={shareMessage}
+          buttons={["OK"]}
         />
 
         {/* Modal for fullscreen photo view */}

@@ -1,9 +1,10 @@
 import { Preferences } from "@capacitor/preferences";
-import { API_URL } from "../config";
+import { API_URL, API_ENDPOINTS } from "../config";
 
 // Keys for auth storage
 const AUTH_TOKEN_KEY = "auth_token";
 const USER_DATA_KEY = "user_data";
+const PENDING_SOCIAL_ACTIONS_KEY = "pending_social_actions";
 
 export interface User {
   id: string;
@@ -15,6 +16,13 @@ export interface User {
   following?: string[];
   followers?: string[];
   createdAt: number;
+  role?: string;
+}
+
+export interface SocialAction {
+  type: "follow" | "unfollow";
+  userId: string;
+  timestamp: number;
 }
 
 /**
@@ -48,7 +56,7 @@ export const register = async (email: string, username: string, password: string
   try {
     if (isOnline()) {
       // Online mode: Use the API
-      const response = await fetch(`${API_URL}/api/auth/register`, {
+      const response = await fetch(`${API_URL}${API_ENDPOINTS.AUTH.REGISTER}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -81,6 +89,7 @@ export const register = async (email: string, username: string, password: string
         following: [],
         followers: [],
         createdAt: new Date(data.user.created_at).getTime(),
+        role: data.user.role,
       };
 
       // Save user data
@@ -107,14 +116,13 @@ export const login = async (emailOrUsername: string, password: string): Promise<
   try {
     if (isOnline()) {
       // Online mode: Use the API
-      const response = await fetch(`${API_URL}/api/auth/login`, {
+      const response = await fetch(`${API_URL}${API_ENDPOINTS.AUTH.LOGIN}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email: emailOrUsername.includes("@") ? emailOrUsername : undefined,
-          username: !emailOrUsername.includes("@") ? emailOrUsername : undefined,
+          credential: emailOrUsername,
           password,
         }),
       });
@@ -164,7 +172,7 @@ export const login = async (emailOrUsername: string, password: string): Promise<
  */
 const getUserProfile = async (token: string): Promise<User> => {
   try {
-    const response = await fetch(`${API_URL}/api/users/me`, {
+    const response = await fetch(`${API_URL}${API_ENDPOINTS.USERS.ME}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -186,6 +194,7 @@ const getUserProfile = async (token: string): Promise<User> => {
       following: data.following || [],
       followers: data.followers || [],
       createdAt: new Date(data.created_at).getTime(),
+      role: data.role,
     };
   } catch (error) {
     console.error("Error getting user profile:", error);
@@ -212,8 +221,27 @@ export const logout = async (): Promise<void> => {
  */
 export const isAuthenticated = async (): Promise<boolean> => {
   try {
-    const result = await Preferences.get({ key: AUTH_TOKEN_KEY });
-    return !!result.value;
+    const token = await getAuthToken();
+    if (!token) return false;
+
+    // Si en ligne, vérifier la validité du token
+    if (isOnline()) {
+      try {
+        const response = await fetch(`${API_URL}${API_ENDPOINTS.AUTH.ME}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        return response.ok;
+      } catch (error) {
+        // En cas d'erreur réseau, on considère que le token est valide pour permettre le mode hors ligne
+        return true;
+      }
+    }
+
+    // En mode hors ligne, vérifier simplement que l'utilisateur existe localement
+    const user = await getCurrentUser();
+    return !!user;
   } catch (error) {
     console.error("Error checking authentication:", error);
     return false;
@@ -226,13 +254,35 @@ export const isAuthenticated = async (): Promise<boolean> => {
  */
 export const getCurrentUser = async (): Promise<User | null> => {
   try {
+    // D'abord essayer d'obtenir les données utilisateur locales
     const result = await Preferences.get({ key: USER_DATA_KEY });
 
     if (!result.value) {
       return null;
     }
 
-    return JSON.parse(result.value);
+    const localUser = JSON.parse(result.value);
+
+    // Si en ligne, récupérer les données à jour depuis le serveur
+    if (isOnline()) {
+      try {
+        const token = await getAuthToken();
+        if (!token) return localUser;
+
+        const user = await getUserProfile(token);
+
+        // Mettre à jour les données locales
+        await saveCurrentUser(user);
+
+        return user;
+      } catch (error) {
+        console.error("Error getting current user from API:", error);
+        // En cas d'erreur, utiliser les données locales
+        return localUser;
+      }
+    }
+
+    return localUser;
   } catch (error) {
     console.error("Error getting current user:", error);
     return null;
@@ -263,12 +313,11 @@ export const updateUserProfile = async (userData: Partial<User>): Promise<User> 
       if (userData.fullName !== undefined) apiUserData.display_name = userData.fullName;
       if (userData.bio !== undefined) apiUserData.bio = userData.bio;
       if (userData.profilePicture !== undefined) {
-        // For profile pictures, we'd need to upload the image first
-        // This is a simplified version that assumes the profilePicture is already a URL
+        // Pour le profil, on définit l'avatar avec l'URL de l'image
         apiUserData.avatar = userData.profilePicture;
       }
 
-      const response = await fetch(`${API_URL}/api/users/me`, {
+      const response = await fetch(`${API_URL}${API_ENDPOINTS.USERS.ME}`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -296,6 +345,7 @@ export const updateUserProfile = async (userData: Partial<User>): Promise<User> 
         following: data.following || currentUser.following,
         followers: data.followers || currentUser.followers,
         createdAt: new Date(data.created_at).getTime(),
+        role: data.role,
       };
 
       // Update local user data
@@ -385,7 +435,7 @@ export const followUser = async (userId: string): Promise<User> => {
     if (isOnline()) {
       const token = await getAuthToken();
 
-      const response = await fetch(`${API_URL}/api/friends/request/${userId}`, {
+      const response = await fetch(`${API_URL}${API_ENDPOINTS.FRIENDS.REQUEST(userId)}`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -428,7 +478,11 @@ export const followUser = async (userId: string): Promise<User> => {
       await saveCurrentUser(updatedUser);
 
       // Mark for sync
-      await addPendingFollow(userId);
+      await addPendingSocialAction({
+        type: "follow",
+        userId,
+        timestamp: Date.now(),
+      });
 
       return updatedUser;
     }
@@ -439,25 +493,32 @@ export const followUser = async (userId: string): Promise<User> => {
 };
 
 /**
- * Add a pending follow request
+ * Ajoute une action sociale en attente (follow/unfollow)
  */
-const addPendingFollow = async (userId: string): Promise<void> => {
+const addPendingSocialAction = async (action: SocialAction): Promise<void> => {
   try {
-    const PENDING_FOLLOWS_KEY = "pending_follows";
+    const result = await Preferences.get({ key: PENDING_SOCIAL_ACTIONS_KEY });
+    const pendingActions = result.value ? JSON.parse(result.value) : [];
 
-    const result = await Preferences.get({ key: PENDING_FOLLOWS_KEY });
-    const pendingFollows = result.value ? JSON.parse(result.value) : [];
+    // Vérifier s'il existe déjà une action contradictoire pour annuler les deux
+    const existingActionIndex = pendingActions.findIndex(
+      (a: SocialAction) => a.userId === action.userId && a.type !== action.type
+    );
 
-    if (!pendingFollows.includes(userId)) {
-      pendingFollows.push(userId);
-
-      await Preferences.set({
-        key: PENDING_FOLLOWS_KEY,
-        value: JSON.stringify(pendingFollows),
-      });
+    if (existingActionIndex !== -1) {
+      // Annuler l'action existante en la supprimant
+      pendingActions.splice(existingActionIndex, 1);
+    } else {
+      // Ajouter la nouvelle action
+      pendingActions.push(action);
     }
+
+    await Preferences.set({
+      key: PENDING_SOCIAL_ACTIONS_KEY,
+      value: JSON.stringify(pendingActions),
+    });
   } catch (error) {
-    console.error("Error adding pending follow:", error);
+    console.error("Error adding pending social action:", error);
   }
 };
 
@@ -478,7 +539,7 @@ export const unfollowUser = async (userId: string): Promise<User> => {
     if (isOnline()) {
       const token = await getAuthToken();
 
-      const response = await fetch(`${API_URL}/api/friends/${userId}`, {
+      const response = await fetch(`${API_URL}${API_ENDPOINTS.FRIENDS.DELETE(userId)}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -515,36 +576,17 @@ export const unfollowUser = async (userId: string): Promise<User> => {
       await saveCurrentUser(updatedUser);
 
       // Mark for sync
-      await addPendingUnfollow(userId);
+      await addPendingSocialAction({
+        type: "unfollow",
+        userId,
+        timestamp: Date.now(),
+      });
 
       return updatedUser;
     }
   } catch (error) {
     console.error("Error unfollowing user:", error);
     throw error;
-  }
-};
-
-/**
- * Add a pending unfollow request
- */
-const addPendingUnfollow = async (userId: string): Promise<void> => {
-  try {
-    const PENDING_UNFOLLOWS_KEY = "pending_unfollows";
-
-    const result = await Preferences.get({ key: PENDING_UNFOLLOWS_KEY });
-    const pendingUnfollows = result.value ? JSON.parse(result.value) : [];
-
-    if (!pendingUnfollows.includes(userId)) {
-      pendingUnfollows.push(userId);
-
-      await Preferences.set({
-        key: PENDING_UNFOLLOWS_KEY,
-        value: JSON.stringify(pendingUnfollows),
-      });
-    }
-  } catch (error) {
-    console.error("Error adding pending unfollow:", error);
   }
 };
 
@@ -562,10 +604,13 @@ export const searchUsers = async (query: string): Promise<User[]> => {
     if (isOnline()) {
       const token = await getAuthToken();
 
-      const response = await fetch(`${API_URL}/api/friends/find?q=${encodeURIComponent(query)}`, {
+      const response = await fetch(`${API_URL}${API_ENDPOINTS.FRIENDS.FIND}`, {
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({ query }),
       });
 
       if (!response.ok) {
@@ -585,6 +630,7 @@ export const searchUsers = async (query: string): Promise<User[]> => {
         following: user.following || [],
         followers: user.followers || [],
         createdAt: new Date(user.created_at).getTime(),
+        role: user.role,
       }));
     } else {
       // Offline mode: Can't search users without internet
@@ -606,7 +652,7 @@ export const getUserById = async (userId: string): Promise<User | null> => {
     if (isOnline()) {
       const token = await getAuthToken();
 
-      const response = await fetch(`${API_URL}/api/users/${userId}`, {
+      const response = await fetch(`${API_URL}${API_ENDPOINTS.USERS.BY_ID(userId)}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -629,6 +675,7 @@ export const getUserById = async (userId: string): Promise<User | null> => {
         following: data.following || [],
         followers: data.followers || [],
         createdAt: new Date(data.created_at).getTime(),
+        role: data.role,
       };
     } else {
       // Check local cache
@@ -670,11 +717,36 @@ export const getUsersByIds = async (userIds: string[]): Promise<User[]> => {
     try {
       const token = await getAuthToken();
 
-      // We can't batch get users with the current API, so we have to make multiple requests
-      const userPromises = userIds.map((id) => getUserById(id));
-      const users = await Promise.all(userPromises);
+      // Make requests in parallel for each user ID
+      const userPromises = userIds.map((userId) => {
+        return fetch(`${API_URL}${API_ENDPOINTS.USERS.BY_ID(userId)}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+          .then((response) => {
+            if (!response.ok) throw new Error(`Failed to fetch user ${userId}`);
+            return response.json();
+          })
+          .then((data) => ({
+            id: data._id || data.id,
+            username: data.username,
+            email: data.email,
+            profilePicture: data.avatar,
+            bio: data.bio,
+            fullName: data.display_name,
+            following: data.following || [],
+            followers: data.followers || [],
+            createdAt: new Date(data.created_at).getTime(),
+            role: data.role,
+          }))
+          .catch((error) => {
+            console.error(`Error fetching user ${userId}:`, error);
+            return null;
+          });
+      });
 
-      // Filter out null values
+      const users = await Promise.all(userPromises);
       return users.filter((user): user is User => user !== null);
     } catch (error) {
       console.error("Error getting users by IDs:", error);
@@ -731,42 +803,44 @@ export const syncPendingSocialActions = async (): Promise<void> => {
   if (!isOnline()) return;
 
   try {
-    // Sync follows
-    const PENDING_FOLLOWS_KEY = "pending_follows";
-    const followsResult = await Preferences.get({ key: PENDING_FOLLOWS_KEY });
+    const result = await Preferences.get({ key: PENDING_SOCIAL_ACTIONS_KEY });
+    if (!result.value) return;
 
-    if (followsResult.value) {
-      const pendingFollows: string[] = JSON.parse(followsResult.value);
+    const pendingActions: SocialAction[] = JSON.parse(result.value);
+    if (pendingActions.length === 0) return;
 
-      for (const userId of pendingFollows) {
-        try {
-          await followUser(userId);
-        } catch (error) {
-          console.error(`Error syncing follow for user ${userId}:`, error);
+    const successfulActions: SocialAction[] = [];
+
+    // Trier les actions par timestamp (de la plus ancienne à la plus récente)
+    pendingActions.sort((a, b) => a.timestamp - b.timestamp);
+
+    for (const action of pendingActions) {
+      try {
+        if (action.type === "follow") {
+          await followUser(action.userId);
+        } else if (action.type === "unfollow") {
+          await unfollowUser(action.userId);
         }
+        successfulActions.push(action);
+      } catch (error) {
+        console.error(`Error syncing social action: ${action.type} for user ${action.userId}`, error);
       }
-
-      // Clear pending follows
-      await Preferences.remove({ key: PENDING_FOLLOWS_KEY });
     }
 
-    // Sync unfollows
-    const PENDING_UNFOLLOWS_KEY = "pending_unfollows";
-    const unfollowsResult = await Preferences.get({ key: PENDING_UNFOLLOWS_KEY });
+    if (successfulActions.length > 0) {
+      // Filtrer les actions réussies
+      const remainingActions = pendingActions.filter(
+        (action) =>
+          !successfulActions.some(
+            (successAction) => successAction.type === action.type && successAction.userId === action.userId
+          )
+      );
 
-    if (unfollowsResult.value) {
-      const pendingUnfollows: string[] = JSON.parse(unfollowsResult.value);
-
-      for (const userId of pendingUnfollows) {
-        try {
-          await unfollowUser(userId);
-        } catch (error) {
-          console.error(`Error syncing unfollow for user ${userId}:`, error);
-        }
-      }
-
-      // Clear pending unfollows
-      await Preferences.remove({ key: PENDING_UNFOLLOWS_KEY });
+      // Mettre à jour la liste des actions en attente
+      await Preferences.set({
+        key: PENDING_SOCIAL_ACTIONS_KEY,
+        value: JSON.stringify(remainingActions),
+      });
     }
   } catch (error) {
     console.error("Error syncing pending social actions:", error);

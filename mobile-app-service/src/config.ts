@@ -2,8 +2,8 @@
  * Configuration du backend API
  */
 
-// URL de base de l'API
-export const API_URL = "https://api.beunreal.app/v1";
+// URL de base de l'API - URL de Traefik qui redirige vers notre backend
+export const API_URL = process.env.API_URL || "http://localhost/api";
 
 // Version de l'API
 export const API_VERSION = "1.0.0";
@@ -36,6 +36,12 @@ export const APP_CONFIG = {
 
   // Délai de notification quotidienne par défaut ("12:00")
   DEFAULT_NOTIFICATION_TIME: "12:00",
+
+  // URL du serveur MinIO pour le stockage des médias
+  MINIO_URL: "http://localhost/minio/api",
+
+  // Nom du bucket MinIO utilisé pour stocker les médias
+  MINIO_BUCKET: "snapshoot-media",
 };
 
 // Mode de fonctionnement de l'application
@@ -65,66 +71,66 @@ export const shouldUseOnlineMode = (): boolean => {
 export const API_ENDPOINTS = {
   // Auth
   AUTH: {
-    REGISTER: "/api/auth/register",
-    LOGIN: "/api/auth/login",
-    ME: "/api/auth/me",
+    REGISTER: "/auth/register",
+    LOGIN: "/auth/login",
+    ME: "/auth/me",
   },
 
   // Users
   USERS: {
-    LIST: "/api/users",
-    ME: "/api/users/me",
-    BY_ID: (id: string) => `/api/users/${id}`,
+    LIST: "/users",
+    ME: "/users/me",
+    BY_ID: (id: string) => `/users/${id}`,
   },
 
   // Friends
   FRIENDS: {
-    LIST: "/api/friends",
-    REQUESTS: "/api/friends/requests",
-    FIND: "/api/friends/find",
-    REQUEST: (userId: string) => `/api/friends/request/${userId}`,
-    ACCEPT: (requestId: string) => `/api/friends/accept/${requestId}`,
-    REJECT: (requestId: string) => `/api/friends/reject/${requestId}`,
-    DELETE: (userId: string) => `/api/friends/${userId}`,
+    LIST: "/friends",
+    REQUESTS: "/friends/requests",
+    FIND: "/friends/find",
+    REQUEST: (userId: string) => `/friends/request/${userId}`,
+    ACCEPT: (requestId: string) => `/friends/accept/${requestId}`,
+    REJECT: (requestId: string) => `/friends/reject/${requestId}`,
+    DELETE: (userId: string) => `/friends/${userId}`,
   },
 
   // Messages
   MESSAGES: {
-    DIRECT: (userId: string) => `/api/messages/${userId}`,
-    GROUP: (groupId: string) => `/api/messages/groups/${groupId}`,
-    DELETE: (messageId: string) => `/api/messages/${messageId}`,
+    DIRECT: (userId: string) => `/messages/${userId}`,
+    GROUP: (groupId: string) => `/messages/groups/${groupId}`,
+    DELETE: (messageId: string) => `/messages/${messageId}`,
   },
 
   // Groups
   GROUPS: {
-    LIST: "/api/groups",
-    CREATE: "/api/groups",
-    BY_ID: (groupId: string) => `/api/groups/${groupId}`,
-    MEMBERS: (groupId: string) => `/api/groups/${groupId}/members`,
-    REMOVE_MEMBER: (groupId: string, userId: string) => `/api/groups/${groupId}/members/${userId}`,
+    LIST: "/groups",
+    CREATE: "/groups",
+    BY_ID: (groupId: string) => `/groups/${groupId}`,
+    MEMBERS: (groupId: string) => `/groups/${groupId}/members`,
+    REMOVE_MEMBER: (groupId: string, userId: string) => `/groups/${groupId}/members/${userId}`,
   },
 
   // Media
   MEDIA: {
-    UPLOAD: "/api/media/upload",
-    BY_ID: (mediaId: string) => `/api/media/${mediaId}`,
+    UPLOAD: "/media/upload",
+    BY_ID: (mediaId: string) => `/media/${mediaId}`,
   },
 
   // Stories
   STORIES: {
-    LIST: "/api/stories",
-    NEARBY: "/api/stories/nearby",
-    CREATE: "/api/stories",
-    BY_ID: (storyId: string) => `/api/stories/${storyId}`,
-    VIEW: (storyId: string) => `/api/stories/${storyId}/view`,
-    LIKE: (storyId: string) => `/api/stories/${storyId}/like`,
-    UNLIKE: (storyId: string) => `/api/stories/${storyId}/unlike`,
+    LIST: "/stories",
+    NEARBY: "/stories/nearby",
+    CREATE: "/stories",
+    BY_ID: (storyId: string) => `/stories/${storyId}`,
+    VIEW: (storyId: string) => `/stories/${storyId}/view`,
+    LIKE: (storyId: string) => `/stories/${storyId}/like`,
+    UNLIKE: (storyId: string) => `/stories/${storyId}/unlike`,
   },
 
   // Location
   LOCATION: {
-    UPDATE: "/api/location/update",
-    NEARBY_USERS: "/api/location/nearby/users",
-    PRIVACY: "/api/location/privacy",
+    UPDATE: "/location/update",
+    NEARBY_USERS: "/location/nearby/users",
+    PRIVACY: "/location/privacy",
   },
 };

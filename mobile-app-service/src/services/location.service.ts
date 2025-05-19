@@ -1,4 +1,4 @@
-import { Geolocation, Position, PermissionStatus } from "@capacitor/geolocation";
+import { Geolocation, PermissionStatus } from "@capacitor/geolocation";
 import { Preferences } from "@capacitor/preferences";
 import { getAuthToken } from "./auth.service";
 import { API_URL, API_ENDPOINTS } from "../config";
@@ -183,9 +183,10 @@ const updateLocationOnServer = async (location: LocationData): Promise<void> => 
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        latitude: location.latitude,
-        longitude: location.longitude,
-        accuracy: location.accuracy,
+        location: {
+          coordinates: [location.longitude, location.latitude],
+          type: "Point",
+        },
       }),
     });
 
@@ -332,35 +333,6 @@ const addPendingPrivacyUpdate = async (privacy: LocationPrivacy): Promise<void> 
 };
 
 /**
- * Calculate distance between two coordinates in kilometers
- * @param lat1 Latitude of first point
- * @param lon1 Longitude of first point
- * @param lat2 Latitude of second point
- * @param lon2 Longitude of second point
- * @returns Distance in kilometers
- */
-export const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-  const R = 6371; // Radius of the earth in km
-  const dLat = deg2rad(lat2 - lat1);
-  const dLon = deg2rad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c; // Distance in km
-  return distance;
-};
-
-/**
- * Convert degrees to radians
- * @param deg Degrees
- * @returns Radians
- */
-const deg2rad = (deg: number): number => {
-  return deg * (Math.PI / 180);
-};
-
-/**
  * Get nearby users
  * @param radius Radius in meters
  * @param limit Maximum number of users to return
@@ -384,11 +356,14 @@ export const getNearbyUsers = async (radius: number = 5000, limit: number = 20):
       throw new Error("Not authenticated");
     }
 
-    const response = await fetch(`${API_URL}${API_ENDPOINTS.LOCATION.NEARBY_USERS}?radius=${radius}&limit=${limit}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await fetch(
+      `${API_URL}${API_ENDPOINTS.LOCATION.NEARBY_USERS}?longitude=${location.longitude}&latitude=${location.latitude}&radius=${radius}&limit=${limit}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
     if (!response.ok) {
       throw new Error("Failed to get nearby users");
@@ -422,6 +397,35 @@ export const getLocationName = async (latitude: number, longitude: number): Prom
     console.error("Error getting location name:", error);
     return "Unknown location";
   }
+};
+
+/**
+ * Calculate distance between two coordinates in kilometers
+ * @param lat1 Latitude of first point
+ * @param lon1 Longitude of first point
+ * @param lat2 Latitude of second point
+ * @param lon2 Longitude of second point
+ * @returns Distance in kilometers
+ */
+export const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371; // Radius of the earth in km
+  const dLat = deg2rad(lat2 - lat1);
+  const dLon = deg2rad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c; // Distance in km
+  return distance;
+};
+
+/**
+ * Convert degrees to radians
+ * @param deg Degrees
+ * @returns Radians
+ */
+const deg2rad = (deg: number): number => {
+  return deg * (Math.PI / 180);
 };
 
 /**
