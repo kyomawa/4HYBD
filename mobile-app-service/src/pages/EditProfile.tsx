@@ -17,6 +17,8 @@ import {
   IonSpinner,
   IonToast,
   useIonRouter,
+  InputCustomEvent,
+  TextareaCustomEvent,
 } from "@ionic/react";
 import { camera, checkmark, chevronBack } from "ionicons/icons";
 import { useAuthContext } from "../contexts/AuthContext";
@@ -32,7 +34,7 @@ const EditProfile: React.FC = () => {
   const [fullName, setFullName] = useState<string>(user?.fullName || "");
   const [username, setUsername] = useState<string>(user?.username || "");
   const [bio, setBio] = useState<string>(user?.bio || "");
-  const [profilePicture, setProfilePicture] = useState<string | undefined>(user?.profilePicture);
+  const [profilePicture, setProfilePicture] = useState<string | undefined | null>(user?.profilePicture);
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showToast, setShowToast] = useState<boolean>(false);
@@ -130,7 +132,7 @@ const EditProfile: React.FC = () => {
             <IonLabel position="floating">Username</IonLabel>
             <IonInput
               value={username}
-              onIonChange={(e) => setUsername(e.detail.value!)}
+              onIonChange={(e: InputCustomEvent) => setUsername(e.detail.value!)}
               type="text"
               autocapitalize="off"
               required
@@ -139,12 +141,22 @@ const EditProfile: React.FC = () => {
 
           <IonItem className="form-item">
             <IonLabel position="floating">Full Name</IonLabel>
-            <IonInput value={fullName} onIonChange={(e) => setFullName(e.detail.value!)} type="text" />
+            <IonInput
+              value={fullName}
+              onIonChange={(e: InputCustomEvent) => setFullName(e.detail.value!)}
+              type="text"
+            />
           </IonItem>
 
           <IonItem className="form-item">
             <IonLabel position="floating">Bio</IonLabel>
-            <IonTextarea value={bio} onIonChange={(e) => setBio(e.detail.value!)} autoGrow rows={4} maxlength={150} />
+            <IonTextarea
+              value={bio}
+              onIonChange={(e: TextareaCustomEvent) => setBio(e.detail.value!)}
+              autoGrow
+              rows={4}
+              maxlength={150}
+            />
           </IonItem>
         </div>
       </IonContent>

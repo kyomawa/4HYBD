@@ -20,6 +20,7 @@ import {
   IonActionSheet,
   IonLabel,
   useIonRouter,
+  SegmentCustomEvent,
 } from "@ionic/react";
 import { personAdd, checkmark, grid, chevronBack, ellipsisHorizontal, chatbubbleOutline } from "ionicons/icons";
 import { useParams } from "react-router";
@@ -126,8 +127,10 @@ const UserProfile: React.FC = () => {
     }
   };
 
-  const handleSegmentChange = (value: string) => {
-    setSelectedSegment(value);
+  const handleSegmentChange = (e: SegmentCustomEvent) => {
+    if (e.detail.value) {
+      setSelectedSegment(e.detail.value);
+    }
   };
 
   if (isLoading) {
@@ -264,7 +267,7 @@ const UserProfile: React.FC = () => {
         </div>
 
         <div className="profile-content">
-          <IonSegment value={selectedSegment} onIonChange={(e) => handleSegmentChange(e.detail.value!)}>
+          <IonSegment value={selectedSegment} onIonChange={handleSegmentChange}>
             <IonSegmentButton value="posts">
               <IonIcon icon={grid} />
             </IonSegmentButton>

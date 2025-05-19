@@ -3,8 +3,8 @@ import {
   IonContent,
   IonHeader,
   IonPage,
-  IonTitle,
   IonToolbar,
+  IonTitle,
   IonList,
   IonItem,
   IonLabel,
@@ -24,6 +24,9 @@ import {
   IonButtons,
   IonSelect,
   IonSelectOption,
+  DatetimeCustomEvent,
+  ToggleChangeEventDetail,
+  SelectCustomEvent,
 } from "@ionic/react";
 import {
   notifications,
@@ -45,11 +48,7 @@ import {
   getPendingNotifications,
 } from "../services/notification.service";
 import { deleteAllPhotos } from "../services/storage.service";
-import { 
-  changeLanguage, 
-  getLanguagePreference,
-  initLanguage
-} from "../services/i18n.service";
+import { changeLanguage, getLanguagePreference, initLanguage } from "../services/i18n.service";
 import { useTranslation } from "react-i18next";
 import logoImage from "../assets/logo.png";
 import "./Settings.css";
@@ -109,9 +108,10 @@ const Settings: React.FC = () => {
   }, []);
 
   // Handle toggle notifications
-  const handleToggleNotifications = async (enabled: boolean) => {
+  const handleToggleNotifications = async (e: CustomEvent<ToggleChangeEventDetail>) => {
     try {
       setIsLoading(true);
+      const enabled = e.detail.checked;
       await toggleNotifications(enabled, notificationTime);
       setNotificationsEnabled(enabled);
 
@@ -120,7 +120,9 @@ const Settings: React.FC = () => {
       setPendingCount(pendingNotifications.length);
 
       setAlertMessage(
-        enabled ? `${t('settings.notifications.enabled') as string} ${formatTimeDisplay(notificationTime)}` : t('settings.notifications.disabled') as string
+        enabled
+          ? `${t("settings.notifications.enabled") as string} ${formatTimeDisplay(notificationTime)}`
+          : (t("settings.notifications.disabled") as string)
       );
       setShowSuccessAlert(true);
     } catch (error) {
@@ -131,8 +133,8 @@ const Settings: React.FC = () => {
   };
 
   // Handle time change
-  const handleTimeChange = (ev: CustomEvent) => {
-    const selectedDateTime = new Date(ev.detail.value);
+  const handleTimeChange = (ev: DatetimeCustomEvent) => {
+    const selectedDateTime = new Date(ev.detail.value as string);
     const hours = selectedDateTime.getHours().toString().padStart(2, "0");
     const minutes = selectedDateTime.getMinutes().toString().padStart(2, "0");
     const timeString = `${hours}:${minutes}`;
@@ -161,7 +163,7 @@ const Settings: React.FC = () => {
       setPendingCount(pendingNotifications.length);
 
       setShowTimePicker(false);
-      setAlertMessage(`${t('settings.alerts.timeUpdated') as string} ${formatTimeDisplay(notificationTime)}`);
+      setAlertMessage(`${t("settings.alerts.timeUpdated") as string} ${formatTimeDisplay(notificationTime)}`);
       setShowSuccessAlert(true);
     } catch (error) {
       console.error("Error saving notification time:", error);
@@ -187,7 +189,7 @@ const Settings: React.FC = () => {
       setPendingCount(pendingNotifications.length);
 
       setShowClearDataAlert(false);
-      setAlertMessage(t('settings.alerts.dataCleared') as string);
+      setAlertMessage(t("settings.alerts.dataCleared") as string);
       setShowSuccessAlert(true);
     } catch (error) {
       console.error("Error clearing data:", error);
@@ -197,13 +199,14 @@ const Settings: React.FC = () => {
   };
 
   // Handle language change
-  const handleLanguageChange = async (language: string) => {
+  const handleLanguageChange = async (e: SelectCustomEvent) => {
     try {
       setIsLoading(true);
+      const language = e.detail.value;
       await changeLanguage(language);
       setCurrentLanguage(language);
-      
-      setAlertMessage(t('settings.alerts.languageChanged') as string);
+
+      setAlertMessage(t("settings.alerts.languageChanged") as string);
       setShowSuccessAlert(true);
     } catch (error) {
       console.error("Error changing language:", error);
@@ -231,38 +234,32 @@ const Settings: React.FC = () => {
           <IonButtons slot="start">
             <IonBackButton defaultHref="/app/profile" text="" />
           </IonButtons>
-          <IonTitle>{t('settings.title')}</IonTitle>
+          <IonTitle>{t("settings.title")}</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen>
         <IonList className="settings-list">
           <div className="settings-section">
-            <div className="section-header">
-              {t('settings.notifications.title')}
-            </div>
-            
+            <div className="section-header">{t("settings.notifications.title")}</div>
+
             <IonItem className="settings-item" lines="none">
               <IonIcon icon={notifications} slot="start" color="primary"></IonIcon>
               <IonLabel>
-                <h2 className="settings-item-header">{t('settings.notifications.dailyReminder')}</h2>
-                <p className="settings-item-subtext">{t('settings.notifications.reminderDescription')}</p>
+                <h2 className="settings-item-header">{t("settings.notifications.dailyReminder")}</h2>
+                <p className="settings-item-subtext">{t("settings.notifications.reminderDescription")}</p>
               </IonLabel>
               {isLoading ? (
                 <IonSpinner name="dots" slot="end" />
               ) : (
-                <IonToggle
-                  checked={notificationsEnabled}
-                  onIonChange={(e) => handleToggleNotifications(e.detail.checked)}
-                  slot="end"
-                />
+                <IonToggle checked={notificationsEnabled} onIonChange={handleToggleNotifications} slot="end" />
               )}
             </IonItem>
 
             <IonItem className="settings-item" button detail lines="none" onClick={() => setShowTimePicker(true)}>
               <IonIcon icon={time} slot="start" color="primary"></IonIcon>
               <IonLabel>
-                <h2 className="settings-item-header">{t('settings.notifications.notificationTime')}</h2>
-                <p className="settings-item-subtext">{t('settings.notifications.timeDescription')}</p>
+                <h2 className="settings-item-header">{t("settings.notifications.notificationTime")}</h2>
+                <p className="settings-item-subtext">{t("settings.notifications.timeDescription")}</p>
               </IonLabel>
               <IonText slot="end" color="medium">
                 {formatTimeDisplay(notificationTime)}
@@ -272,62 +269,56 @@ const Settings: React.FC = () => {
             {notificationsEnabled && pendingCount > 0 && (
               <div className="notification-status">
                 <IonIcon icon={checkmarkCircle} color="success"></IonIcon>
-                {t('settings.notifications.nextScheduled')} {formatTimeDisplay(notificationTime)}
+                {t("settings.notifications.nextScheduled")} {formatTimeDisplay(notificationTime)}
               </div>
             )}
           </div>
 
           <div className="settings-section">
-            <div className="section-header">
-              {t('settings.language.title')}
-            </div>
-            
+            <div className="section-header">{t("settings.language.title")}</div>
+
             <IonItem className="settings-item" lines="none">
               <IonIcon icon={language} slot="start" color="primary"></IonIcon>
               <IonLabel>
-                <h2 className="settings-item-header">{t('settings.language.select')}</h2>
+                <h2 className="settings-item-header">{t("settings.language.select")}</h2>
               </IonLabel>
               {isLoading ? (
                 <IonSpinner name="dots" slot="end" />
               ) : (
-                <IonSelect 
-                  value={currentLanguage}
-                  onIonChange={(e) => handleLanguageChange(e.detail.value)}
-                  interface="popover"
-                  slot="end"
-                >
-                  <IonSelectOption value="fr">{t('settings.language.fr')}</IonSelectOption>
-                  <IonSelectOption value="en">{t('settings.language.en')}</IonSelectOption>
+                <IonSelect value={currentLanguage} onIonChange={handleLanguageChange} interface="popover" slot="end">
+                  <IonSelectOption value="fr">{t("settings.language.fr")}</IonSelectOption>
+                  <IonSelectOption value="en">{t("settings.language.en")}</IonSelectOption>
                 </IonSelect>
               )}
             </IonItem>
           </div>
 
           <div className="settings-section">
-            <div className="section-header">
-              {t('settings.dataManagement.title')}
-            </div>
-            
-            <IonItem className="settings-item danger-item" button lines="none" onClick={() => setShowClearDataAlert(true)}>
+            <div className="section-header">{t("settings.dataManagement.title")}</div>
+
+            <IonItem
+              className="settings-item danger-item"
+              button
+              lines="none"
+              onClick={() => setShowClearDataAlert(true)}
+            >
               <IonIcon icon={trash} slot="start" color="danger"></IonIcon>
               <IonLabel>
-                <h2 className="settings-item-header">{t('settings.dataManagement.clearData')}</h2>
-                <p className="settings-item-subtext">{t('settings.dataManagement.clearDescription')}</p>
+                <h2 className="settings-item-header">{t("settings.dataManagement.clearData")}</h2>
+                <p className="settings-item-subtext">{t("settings.dataManagement.clearDescription")}</p>
               </IonLabel>
             </IonItem>
           </div>
 
           <div className="settings-section">
-            <div className="section-header">
-              {t('settings.about.title')}
-            </div>
-            
+            <div className="section-header">{t("settings.about.title")}</div>
+
             <IonCard className="about-card">
               <img src={logoImage} alt="Logo" className="app-logo" />
               <h2>BeUnreal</h2>
-              <p>{t('settings.about.version')} 1.0.0</p>
-              <p>{t('settings.about.description')}</p>
-              <p className="copyright">{t('settings.about.copyright')}</p>
+              <p>{t("settings.about.version")} 1.0.0</p>
+              <p>{t("settings.about.description")}</p>
+              <p className="copyright">{t("settings.about.copyright")}</p>
             </IonCard>
           </div>
         </IonList>
@@ -339,9 +330,9 @@ const Settings: React.FC = () => {
               <IonButton slot="start" fill="clear" color="light" onClick={() => setShowTimePicker(false)}>
                 <IonIcon icon={arrowBack} slot="icon-only"></IonIcon>
               </IonButton>
-              <IonTitle>{t('settings.time.title')}</IonTitle>
+              <IonTitle>{t("settings.time.title")}</IonTitle>
               <IonButton slot="end" fill="clear" color="light" onClick={handleSaveTime}>
-                {t('settings.time.save')}
+                {t("settings.time.save")}
               </IonButton>
             </IonToolbar>
           </IonHeader>
@@ -358,15 +349,15 @@ const Settings: React.FC = () => {
         <IonAlert
           isOpen={showClearDataAlert}
           onDidDismiss={() => setShowClearDataAlert(false)}
-          header={t('settings.alerts.clearDataTitle')}
-          message={t('settings.alerts.clearDataMessage')}
+          header={t("settings.alerts.clearDataTitle")}
+          message={t("settings.alerts.clearDataMessage")}
           buttons={[
             {
-              text: t('settings.alerts.cancel'),
+              text: t("settings.alerts.cancel"),
               role: "cancel",
             },
             {
-              text: t('settings.alerts.clearAll'),
+              text: t("settings.alerts.clearAll"),
               role: "destructive",
               handler: handleClearAllData,
             },
@@ -377,9 +368,9 @@ const Settings: React.FC = () => {
         <IonAlert
           isOpen={showSuccessAlert}
           onDidDismiss={() => setShowSuccessAlert(false)}
-          header={t('settings.alerts.success')}
+          header={t("settings.alerts.success")}
           message={alertMessage}
-          buttons={[t('settings.alerts.ok')]}
+          buttons={[t("settings.alerts.ok")]}
         />
       </IonContent>
     </IonPage>

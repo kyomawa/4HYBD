@@ -13,6 +13,7 @@ import {
   IonRow,
   IonCol,
   useIonRouter,
+  InputCustomEvent,
 } from "@ionic/react";
 import { logIn, logoInstagram } from "ionicons/icons";
 import { login, isAuthenticated } from "../services/auth.service";
@@ -100,7 +101,7 @@ const Login: React.FC = () => {
                   <IonLabel position="floating">Email ou nom d'utilisateur</IonLabel>
                   <IonInput
                     value={emailOrUsername}
-                    onIonChange={(e) => setEmailOrUsername(e.detail.value!)}
+                    onIonChange={(e: InputCustomEvent) => setEmailOrUsername(e.detail.value!)}
                     type="text"
                     autocapitalize="off"
                   />
@@ -108,7 +109,11 @@ const Login: React.FC = () => {
 
                 <IonItem className="form-item">
                   <IonLabel position="floating">Mot de passe</IonLabel>
-                  <IonInput value={password} onIonChange={(e) => setPassword(e.detail.value!)} type="password" />
+                  <IonInput
+                    value={password}
+                    onIonChange={(e: InputCustomEvent) => setPassword(e.detail.value!)}
+                    type="password"
+                  />
                 </IonItem>
 
                 {errorMessage && (

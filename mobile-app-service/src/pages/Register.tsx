@@ -16,6 +16,7 @@ import {
   IonButtons,
   IonBackButton,
   useIonRouter,
+  InputCustomEvent,
 } from "@ionic/react";
 import { personAdd, arrowBack } from "ionicons/icons";
 import { register } from "../services/auth.service";
@@ -61,7 +62,9 @@ const Register: React.FC = () => {
       }
 
       if (!validateUsername(username)) {
-        setErrorMessage("Le nom d'utilisateur doit contenir de 3 à 20 caractères et peut uniquement contenir des lettres, chiffres, tirets bas et points");
+        setErrorMessage(
+          "Le nom d'utilisateur doit contenir de 3 à 20 caractères et peut uniquement contenir des lettres, chiffres, tirets bas et points"
+        );
         return;
       }
 
@@ -118,7 +121,7 @@ const Register: React.FC = () => {
                   <IonLabel position="floating">Email</IonLabel>
                   <IonInput
                     value={email}
-                    onIonChange={(e) => setEmail(e.detail.value!)}
+                    onIonChange={(e: InputCustomEvent) => setEmail(e.detail.value as string)}
                     type="email"
                     autocapitalize="off"
                   />
@@ -128,7 +131,7 @@ const Register: React.FC = () => {
                   <IonLabel position="floating">Nom d'utilisateur</IonLabel>
                   <IonInput
                     value={username}
-                    onIonChange={(e) => setUsername(e.detail.value!)}
+                    onIonChange={(e: InputCustomEvent) => setUsername(e.detail.value as string)}
                     type="text"
                     autocapitalize="off"
                   />
@@ -136,14 +139,18 @@ const Register: React.FC = () => {
 
                 <IonItem className="form-item">
                   <IonLabel position="floating">Mot de passe</IonLabel>
-                  <IonInput value={password} onIonChange={(e) => setPassword(e.detail.value!)} type="password" />
+                  <IonInput
+                    value={password}
+                    onIonChange={(e: InputCustomEvent) => setPassword(e.detail.value as string)}
+                    type="password"
+                  />
                 </IonItem>
 
                 <IonItem className="form-item">
                   <IonLabel position="floating">Confirmer le mot de passe</IonLabel>
                   <IonInput
                     value={confirmPassword}
-                    onIonChange={(e) => setConfirmPassword(e.detail.value!)}
+                    onIonChange={(e: InputCustomEvent) => setConfirmPassword(e.detail.value as string)}
                     type="password"
                   />
                 </IonItem>

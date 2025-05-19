@@ -19,6 +19,7 @@ import {
   IonActionSheet,
   IonAlert,
   useIonRouter,
+  InputCustomEvent,
 } from "@ionic/react";
 import { heart, heartOutline, chatbubbleOutline, ellipsisHorizontal, chevronBack, send, trash } from "ionicons/icons";
 import { useParams } from "react-router";
@@ -335,7 +336,7 @@ const PhotoView: React.FC = () => {
         <IonItem className="comment-input-item" lines="none">
           <IonInput
             value={commentText}
-            onIonChange={(e) => setCommentText(e.detail.value!)}
+            onIonChange={(e: InputCustomEvent) => setCommentText(e.detail.value!)}
             placeholder="Add a comment..."
             className="comment-input"
             disabled={isCommenting}

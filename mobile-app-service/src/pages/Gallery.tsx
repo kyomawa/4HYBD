@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   IonContent,
   IonHeader,
   IonPage,
-  IonTitle,
   IonToolbar,
+  IonTitle,
   IonGrid,
   IonRow,
   IonCol,
@@ -25,6 +25,7 @@ import {
   IonItem,
   IonLabel,
   IonModal,
+  InputCustomEvent,
 } from "@ionic/react";
 import { trash, ellipsisVertical, calendar, time, chevronDownCircle, expandOutline, closeCircle } from "ionicons/icons";
 import usePhotos from "../hooks/usePhotos";

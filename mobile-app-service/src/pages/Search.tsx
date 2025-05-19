@@ -20,6 +20,7 @@ import {
   IonInfiniteScroll,
   IonInfiniteScrollContent,
   useIonRouter,
+  SearchbarCustomEvent,
 } from "@ionic/react";
 import { personAdd, checkmark, searchOutline, people, arrowForward } from "ionicons/icons";
 import { searchUsers, User, followUser, unfollowUser, getCurrentUser } from "../services/auth.service";
@@ -316,7 +317,7 @@ const Search: React.FC = () => {
         <div className="search-header">
           <IonSearchbar
             value={searchTerm}
-            onIonChange={(e) => setSearchTerm(e.detail.value!)}
+            onIonChange={(e: SearchbarCustomEvent) => setSearchTerm(e.detail.value!)}
             placeholder="Search users"
             debounce={500}
             animated

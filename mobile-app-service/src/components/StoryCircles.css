@@ -1,137 +1,119 @@
 .story-circles-container {
-  padding: 10px 0;
-  background: var(--beunreal-surface);
-  border-bottom: 1px solid var(--beunreal-border);
-}
-
-.stories-scroll {
   display: flex;
+  padding: 8px 16px;
   overflow-x: auto;
-  padding: 0 10px;
-  gap: 15px;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  background-color: var(--ion-background-color);
+  margin-top: 10px;
+  /* Masquer la barre de défilement mais permettre le défilement */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
 }
 
-.stories-scroll::-webkit-scrollbar {
+/* Masquer la barre de défilement pour Chrome, Safari et Opera */
+.story-circles-container::-webkit-scrollbar {
   display: none;
 }
 
-.story-circle {
+.story-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
-  min-width: 70px;
-  max-width: 70px;
-  height: 100px;
+  margin-right: 12px;
+  min-width: 60px;
 }
 
-.circle-avatar {
-  width: 64px;
-  height: 64px;
+.story-add-button {
+  width: 60px;
+  height: 60px;
+  min-width: 60px;
   border-radius: 50%;
-  overflow: hidden;
-  position: relative;
-  border: 2px solid var(--beunreal-accent);
-  background: var(--beunreal-surface);
-  flex-shrink: 0;
+  border: 2px dashed var(--ion-color-medium);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.1);
 }
 
-.circle-avatar img {
+.story-add-button ion-icon {
+  font-size: 24px;
+  color: var(--ion-color-medium);
+}
+
+/* Animation au clic */
+.story-add-button:active,
+.story-circle:active {
+  transform: scale(0.95);
+  opacity: 0.8;
+  transition: all 0.2s ease;
+}
+
+/* Style pour les cercles de stories des autres utilisateurs */
+.story-circle {
+  width: 60px;
+  height: 60px;
+  min-width: 60px;
+  border-radius: 50%;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Style pour les cercles avec stories non vues */
+.story-circle.unseen {
+  border: 2px solid var(--ion-color-primary);
+}
+
+/* Style pour les cercles avec stories déjà vues */
+.story-circle.seen {
+  border: 2px solid var(--ion-color-medium);
+}
+
+.story-circle ion-avatar {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
 }
 
-.default-avatar {
+.avatar-placeholder {
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--beunreal-accent);
+  background-color: var(--ion-color-medium);
   color: white;
   font-size: 24px;
   font-weight: bold;
 }
 
-.username {
+/* Style pour les noms sous les cercles */
+.story-name {
   font-size: 12px;
-  color: var(--beunreal-text);
+  margin-top: 4px;
   text-align: center;
-  max-width: 70px;
+  max-width: 60px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-top: 2px;
+  color: var(--ion-color-dark);
 }
 
-.create-story .circle-avatar {
-  border: 2px dashed var(--beunreal-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--beunreal-surface);
+/* Styles pour le modal de story */
+.story-modal {
+  --border-radius: 0;
+  --width: 100%;
+  --height: 100%;
 }
 
-.create-button {
-  width: 100%;
+.story-content {
+  --background: #000;
+}
+
+.story-view-placeholder {
   height: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-}
-
-.create-button-icon {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(45deg, #000000, #262626);
-  border-radius: 50%;
   color: white;
-}
-
-.create-button-icon ion-icon {
-  font-size: 24px;
-}
-
-.create-button.loading {
-  opacity: 0.7;
-}
-
-.story-circle.viewed .circle-avatar {
-  border-color: var(--beunreal-border);
-  opacity: 0.7;
-}
-
-.story-circle.unviewed .circle-avatar {
-  border-color: var(--beunreal-accent);
-}
-
-.location-tag, .time-tag {
-  font-size: 10px;
-  color: var(--beunreal-secondary);
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.story-loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-}
-
-.no-stories {
   text-align: center;
   padding: 20px;
-  color: var(--beunreal-secondary);
 }
