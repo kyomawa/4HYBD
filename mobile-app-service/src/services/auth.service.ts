@@ -39,38 +39,25 @@ export const getAuthToken = async (): Promise<string | null> => {
 };
 
 /**
+ * Sauvegarde le token d'authentification
+ */
+export const saveAuthToken = async (token: string): Promise<void> => {
+  try {
+    await Preferences.set({
+      key: AUTH_TOKEN_KEY,
+      value: token,
+    });
+  } catch (error) {
+    console.error("Error saving auth token:", error);
+    throw error;
+  }
+};
+
+/**
  * Vérifie si l'appareil est actuellement en ligne
  */
 const isOnline = (): boolean => {
   return navigator.onLine;
-};
-
-/**
- * Effectue une requête no-cors vers le backend
- * @param url URL à appeler
- * @param options Options de la requête
- * @returns Promise avec la réponse mockée
- */
-const makeNoCorsRequest = async (url: string, options: RequestInit = {}): Promise<any> => {
-  try {
-    // Ajouter mode: 'no-cors' à toutes les requêtes
-    const updatedOptions = {
-      ...options,
-      mode: "no-cors",
-      credentials: "include",
-    };
-
-    // Effectuer la requête
-    // Note: avec no-cors, nous ne pouvons pas accéder à la réponse
-    await fetch(url, updatedOptions);
-
-    // Comme nous ne pouvons pas lire la réponse en mode no-cors,
-    // nous devons simuler une réponse de succès
-    return { success: true };
-  } catch (error) {
-    console.error(`Error making no-cors request to ${url}:`, error);
-    throw error;
-  }
 };
 
 /**
@@ -84,11 +71,12 @@ export const register = async (email: string, username: string, password: string
   try {
     if (isOnline()) {
       // Online mode: Use the API
-      await makeNoCorsRequest(`${API_URL}${API_ENDPOINTS.AUTH.REGISTER}`, {
+      const response = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Important pour stocker les cookies
         body: JSON.stringify({
           email,
           password,
@@ -96,28 +84,36 @@ export const register = async (email: string, username: string, password: string
         }),
       });
 
-      // Générer un token factice pour le développement
-      const mockToken = "mock_token_" + Math.random().toString(36).substring(2);
-      await saveAuthToken(mockToken);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Registration failed: ${response.status}`);
+      }
 
-      // Créer un utilisateur factice pour le développement
-      const mockUser: User = {
-        id: "user_" + Math.random().toString(36).substring(2),
-        email,
-        username,
-        profilePicture: null,
-        bio: "",
-        fullName: "",
-        following: [],
-        followers: [],
-        createdAt: Date.now(),
-        role: "User",
+      const data = await response.json();
+
+      // Stocke le token JWT si disponible dans la réponse
+      if (data.data && data.data.token) {
+        await saveAuthToken(data.data.token);
+      }
+
+      // Créer un objet utilisateur à partir de la réponse
+      const user: User = {
+        id: data.data.user._id || data.data.user.id,
+        email: data.data.user.email,
+        username: data.data.user.username,
+        profilePicture: data.data.user.avatar || null,
+        bio: data.data.user.bio || "",
+        fullName: data.data.user.display_name || "",
+        following: data.data.user.following || [],
+        followers: data.data.user.followers || [],
+        createdAt: new Date(data.data.user.created_at).getTime(),
+        role: data.data.user.role,
       };
 
       // Save user data
-      await saveCurrentUser(mockUser);
+      await saveCurrentUser(user);
 
-      return mockUser;
+      return user;
     } else {
       // Offline mode: Cannot register without internet
       throw new Error("Cannot register while offline");
@@ -138,39 +134,38 @@ export const login = async (emailOrUsername: string, password: string): Promise<
   try {
     if (isOnline()) {
       // Online mode: Use the API
-      await makeNoCorsRequest(`${API_URL}${API_ENDPOINTS.AUTH.LOGIN}`, {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Important pour que le cookie de session soit stocké
         body: JSON.stringify({
           credential: emailOrUsername,
           password,
         }),
       });
 
-      // Générer un token factice pour le développement
-      const mockToken = "mock_token_" + Math.random().toString(36).substring(2);
-      await saveAuthToken(mockToken);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Login failed: ${response.status}`);
+      }
 
-      // Créer un utilisateur factice pour le développement
-      const mockUser: User = {
-        id: "user_" + Math.random().toString(36).substring(2),
-        email: emailOrUsername.includes("@") ? emailOrUsername : "user@example.com",
-        username: emailOrUsername.includes("@") ? emailOrUsername.split("@")[0] : emailOrUsername,
-        profilePicture: null,
-        bio: "Test user bio",
-        fullName: "Test User",
-        following: [],
-        followers: [],
-        createdAt: Date.now(),
-        role: "User",
-      };
+      const data = await response.json();
 
-      // Save user data
-      await saveCurrentUser(mockUser);
+      // Stocke le token JWT si disponible dans la réponse
+      if (data.data && data.data.token) {
+        await saveAuthToken(data.data.token);
+      }
 
-      return mockUser;
+      // Récupérer les informations de l'utilisateur après connexion
+      const userData = await getCurrentUser();
+
+      if (!userData) {
+        throw new Error("Failed to get user profile after login");
+      }
+
+      return userData;
     } else {
       // Try to use cached credentials for offline login
       const result = await Preferences.get({ key: USER_DATA_KEY });
@@ -194,42 +189,38 @@ export const login = async (emailOrUsername: string, password: string): Promise<
 };
 
 /**
- * Get user profile from API (mocked for no-cors)
+ * Get user profile from API
  */
-const getUserProfile = async (token: string): Promise<User> => {
+const getUserProfile = async (): Promise<User> => {
   try {
-    // No-cors request
-    await makeNoCorsRequest(`${API_URL}${API_ENDPOINTS.USERS.ME}`, {
+    const token = await getAuthToken();
+
+    const response = await fetch(`${API_URL}/users/me`, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
       },
+      credentials: "include",
     });
 
-    // Mock data since we can't read response with no-cors
-    const mockData = {
-      _id: "user_" + Math.random().toString(36).substring(2),
-      email: "user@example.com",
-      username: "testuser",
-      avatar: null,
-      bio: "Test user bio",
-      display_name: "Test User",
-      following: [],
-      followers: [],
-      created_at: new Date().toISOString(),
-      role: "User",
-    };
+    if (!response.ok) {
+      throw new Error(`Failed to get user profile: ${response.status}`);
+    }
 
+    const data = await response.json();
+
+    // Convert API response to our format
     return {
-      id: mockData._id,
-      email: mockData.email,
-      username: mockData.username,
-      profilePicture: mockData.avatar,
-      bio: mockData.bio,
-      fullName: mockData.display_name,
-      following: mockData.following || [],
-      followers: mockData.followers || [],
-      createdAt: new Date(mockData.created_at).getTime(),
-      role: mockData.role,
+      id: data.data._id || data.data.id,
+      email: data.data.email,
+      username: data.data.username,
+      profilePicture: data.data.avatar || null,
+      bio: data.data.bio || "",
+      fullName: data.data.display_name || "",
+      following: data.data.following || [],
+      followers: data.data.followers || [],
+      createdAt: new Date(data.data.created_at).getTime(),
+      role: data.data.role,
     };
   } catch (error) {
     console.error("Error getting user profile:", error);
@@ -247,39 +238,32 @@ export const getUserById = async (userId: string): Promise<User | null> => {
     if (isOnline()) {
       const token = await getAuthToken();
 
-      // Make no-cors request
-      await makeNoCorsRequest(`${API_URL}${API_ENDPOINTS.USERS.BY_ID(userId)}`, {
+      const response = await fetch(`${API_URL}/users/${userId}`, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          "Content-Type": "application/json",
         },
+        credentials: "include",
       });
 
-      // Mock data
-      const mockData = {
-        _id: userId,
-        username: `user_${userId.substring(0, 5)}`,
-        email: `user_${userId.substring(0, 5)}@example.com`,
-        avatar: null,
-        bio: "User bio",
-        display_name: `User ${userId.substring(0, 5)}`,
-        following: [],
-        followers: [],
-        created_at: new Date().toISOString(),
-        role: "User",
-      };
+      if (!response.ok) {
+        throw new Error(`Failed to get user: ${response.status}`);
+      }
+
+      const data = await response.json();
 
       // Convert API response to our format
       return {
-        id: mockData._id,
-        username: mockData.username,
-        email: mockData.email,
-        profilePicture: mockData.avatar,
-        bio: mockData.bio,
-        fullName: mockData.display_name,
-        following: mockData.following || [],
-        followers: mockData.followers || [],
-        createdAt: new Date(mockData.created_at).getTime(),
-        role: mockData.role,
+        id: data.data._id || data.data.id,
+        username: data.data.username,
+        email: data.data.email,
+        profilePicture: data.data.avatar || null,
+        bio: data.data.bio || "",
+        fullName: data.data.display_name || "",
+        following: data.data.following || [],
+        followers: data.data.followers || [],
+        createdAt: new Date(data.data.created_at).getTime(),
+        role: data.data.role,
       };
     } else {
       // Check local cache
@@ -312,6 +296,26 @@ export const getUserById = async (userId: string): Promise<User | null> => {
  */
 export const logout = async (): Promise<void> => {
   try {
+    if (isOnline()) {
+      // Appeler l'API pour déconnecter la session
+      const token = await getAuthToken();
+
+      try {
+        await fetch(`${API_URL}/auth/logout`, {
+          method: "POST",
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        });
+      } catch (error) {
+        console.error("Error calling logout API:", error);
+        // Continue with local logout even if API call fails
+      }
+    }
+
+    // Supprimer les données locales
     await Preferences.remove({ key: AUTH_TOKEN_KEY });
     await Preferences.remove({ key: USER_DATA_KEY });
   } catch (error) {
@@ -332,11 +336,18 @@ export const isAuthenticated = async (): Promise<boolean> => {
     // Si en ligne, vérifier la validité du token
     if (isOnline()) {
       try {
-        // With no-cors we can't properly check token validity
-        // We'll assume it's valid if it exists
-        return true;
+        const response = await fetch(`${API_URL}/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        });
+
+        return response.ok;
       } catch (error) {
         // En cas d'erreur réseau, on considère que le token est valide pour permettre le mode hors ligne
+        console.error("Error checking token validity:", error);
         return true;
       }
     }
@@ -358,20 +369,43 @@ export const getCurrentUser = async (): Promise<User | null> => {
   try {
     // D'abord essayer d'obtenir les données utilisateur locales
     const result = await Preferences.get({ key: USER_DATA_KEY });
-
-    if (!result.value) {
-      return null;
-    }
-
-    const localUser = JSON.parse(result.value);
+    const localUser = result.value ? JSON.parse(result.value) : null;
 
     // Si en ligne, récupérer les données à jour depuis le serveur
     if (isOnline()) {
       try {
         const token = await getAuthToken();
-        if (!token) return localUser;
+        if (!token && !localUser) return null;
 
-        const user = await getUserProfile(token);
+        const response = await fetch(`${API_URL}/users/me`, {
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          // Si l'API échoue mais qu'on a des données locales, on les utilise
+          if (localUser) return localUser;
+          return null;
+        }
+
+        const data = await response.json();
+
+        // Convertir la réponse API à notre format
+        const user: User = {
+          id: data.data._id || data.data.id,
+          email: data.data.email,
+          username: data.data.username,
+          profilePicture: data.data.avatar || null,
+          bio: data.data.bio || "",
+          fullName: data.data.display_name || "",
+          following: data.data.following || [],
+          followers: data.data.followers || [],
+          createdAt: new Date(data.data.created_at).getTime(),
+          role: data.data.role,
+        };
 
         // Mettre à jour les données locales
         await saveCurrentUser(user);
@@ -419,24 +453,25 @@ export const updateUserProfile = async (userData: Partial<User>): Promise<User> 
         apiUserData.avatar = userData.profilePicture;
       }
 
-      // Make no-cors request
-      await makeNoCorsRequest(`${API_URL}${API_ENDPOINTS.USERS.ME}`, {
+      const response = await fetch(`${API_URL}/users/me`, {
         method: "PUT",
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify(apiUserData),
       });
 
-      // Mock updated data
-      const updatedUser: User = {
-        ...currentUser,
-        ...userData,
-      };
+      if (!response.ok) {
+        throw new Error(`Failed to update profile: ${response.status}`);
+      }
 
-      // Update local user data
-      await saveCurrentUser(updatedUser);
+      // Récupérer le profil mis à jour
+      const updatedUser = await getCurrentUser();
+      if (!updatedUser) {
+        throw new Error("Failed to get updated user profile");
+      }
 
       return updatedUser;
     } else {
@@ -522,13 +557,18 @@ export const followUser = async (userId: string): Promise<User> => {
     if (isOnline()) {
       const token = await getAuthToken();
 
-      // Make no-cors request
-      await makeNoCorsRequest(`${API_URL}${API_ENDPOINTS.FRIENDS.REQUEST(userId)}`, {
+      const response = await fetch(`${API_URL}/friends/request/${userId}`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          "Content-Type": "application/json",
         },
+        credentials: "include",
       });
+
+      if (!response.ok) {
+        throw new Error(`Failed to follow user: ${response.status}`);
+      }
 
       // Optimistically update following list
       const following = currentUser.following || [];
@@ -622,13 +662,18 @@ export const unfollowUser = async (userId: string): Promise<User> => {
     if (isOnline()) {
       const token = await getAuthToken();
 
-      // Make no-cors request
-      await makeNoCorsRequest(`${API_URL}${API_ENDPOINTS.FRIENDS.DELETE(userId)}`, {
+      const response = await fetch(`${API_URL}/friends/${userId}`, {
         method: "DELETE",
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          "Content-Type": "application/json",
         },
+        credentials: "include",
       });
+
+      if (!response.ok) {
+        throw new Error(`Failed to unfollow user: ${response.status}`);
+      }
 
       // Update following list
       const following = currentUser.following?.filter((id) => id !== userId) || [];
@@ -683,33 +728,35 @@ export const searchUsers = async (query: string): Promise<User[]> => {
     if (isOnline()) {
       const token = await getAuthToken();
 
-      // Make no-cors request
-      await makeNoCorsRequest(`${API_URL}${API_ENDPOINTS.FRIENDS.FIND}`, {
+      const response = await fetch(`${API_URL}/friends/find`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({ query }),
       });
 
-      // Mock data
-      const mockUsers: User[] = Array(5)
-        .fill(0)
-        .map((_, i) => ({
-          id: `user_${i}_${Math.random().toString(36).substring(2, 5)}`,
-          username: `user${i}_${query}`,
-          email: `user${i}_${query}@example.com`,
-          profilePicture: null,
-          bio: `Bio for user ${i}`,
-          fullName: `User ${i} ${query}`,
-          following: [],
-          followers: [],
-          createdAt: Date.now() - i * 86400000, // Stagger creation times
-          role: "User",
-        }));
+      if (!response.ok) {
+        throw new Error(`Failed to search users: ${response.status}`);
+      }
 
-      return mockUsers;
+      const data = await response.json();
+
+      // Convert API response to our format
+      return data.data.map((user: any) => ({
+        id: user._id || user.id,
+        username: user.username,
+        email: user.email || "",
+        profilePicture: user.avatar || null,
+        bio: user.bio || "",
+        fullName: user.display_name || "",
+        following: user.following || [],
+        followers: user.followers || [],
+        createdAt: user.created_at ? new Date(user.created_at).getTime() : Date.now(),
+        role: user.role || "User",
+      }));
     } else {
       // Offline mode: Can't search users without internet
       throw new Error("Cannot search users while offline");
@@ -732,21 +779,41 @@ export const getUsersByIds = async (userIds: string[]): Promise<User[]> => {
 
   if (isOnline()) {
     try {
-      // Mock user data
-      const mockUsers: User[] = userIds.map((userId, index) => ({
-        id: userId,
-        username: `user_${userId.substring(0, 5)}`,
-        email: `user_${userId.substring(0, 5)}@example.com`,
-        profilePicture: null,
-        bio: `Bio for user ${index}`,
-        fullName: `User ${index}`,
-        following: [],
-        followers: [],
-        createdAt: Date.now() - index * 86400000, // Stagger creation times
-        role: "User",
-      }));
+      const token = await getAuthToken();
+      const users: User[] = [];
 
-      return mockUsers;
+      // Fetch each user individually
+      for (const userId of userIds) {
+        try {
+          const response = await fetch(`${API_URL}/users/${userId}`, {
+            headers: {
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            users.push({
+              id: data.data._id || data.data.id,
+              username: data.data.username,
+              email: data.data.email || "",
+              profilePicture: data.data.avatar || null,
+              bio: data.data.bio || "",
+              fullName: data.data.display_name || "",
+              following: data.data.following || [],
+              followers: data.data.followers || [],
+              createdAt: data.data.created_at ? new Date(data.data.created_at).getTime() : Date.now(),
+              role: data.data.role || "User",
+            });
+          }
+        } catch (error) {
+          console.error(`Error fetching user ${userId}:`, error);
+        }
+      }
+
+      return users;
     } catch (error) {
       console.error("Error getting users by IDs:", error);
       return [];
@@ -771,17 +838,6 @@ export const getUsersByIds = async (userIds: string[]): Promise<User[]> => {
 
     return users;
   }
-};
-
-/**
- * Save auth token to storage
- * @param token Auth token
- */
-const saveAuthToken = async (token: string): Promise<void> => {
-  await Preferences.set({
-    key: AUTH_TOKEN_KEY,
-    value: token,
-  });
 };
 
 /**

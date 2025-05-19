@@ -10,7 +10,9 @@ COPY package.json package-lock.json* ./
 RUN npm ci
 
 COPY . .
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
 
 EXPOSE 8100
 
-CMD ["ionic", "serve", "--host=0.0.0.0", "--livereload"]
+CMD ["/app/start.sh"]

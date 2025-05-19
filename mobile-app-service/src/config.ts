@@ -1,220 +1,116 @@
-/**
- * Configuration du backend API
- */
+// Base and proxy/API configuration
+export const API_URL: string = import.meta.env.VITE_API_URL || "http://192.168.1.11/api";
+export const API_VERSION: string = "1.0.0";
+export const API_TIMEOUT: number = 15000;
+export const MAX_RETRY_ATTEMPTS: number = 3;
 
-// URL de base de l'API
-export const API_URL = import.meta.env.VITE_API_URL || "http://192.168.1.11";
-
-// Version de l'API
-export const API_VERSION = "1.0.0";
-
-// Délai de timeout pour les requêtes API (en millisecondes)
-export const API_TIMEOUT = 15000; // 15 secondes
-
-// Nombre maximum de tentatives de reconnexion
-export const MAX_RETRY_ATTEMPTS = 3;
-
-// Configuration des paramètres d'application
 export const APP_CONFIG = {
-  // Taille maximale des médias en octets (10 Mo)
   MAX_MEDIA_SIZE: 10 * 1024 * 1024,
-
-  // Durée maximale des vidéos en secondes (10s)
   MAX_VIDEO_DURATION: 10,
-
-  // Temps d'expiration des stories en secondes (24h)
-  STORY_EXPIRY_TIME: 86400,
-
-  // Intervalle de mise à jour des données en millisecondes (5 min)
+  STORY_EXPIRY_TIME: 24 * 60 * 60,
   DATA_REFRESH_INTERVAL: 5 * 60 * 1000,
-
-  // Distance maximale pour les stories "à proximité" en mètres (20 km)
   NEARBY_MAX_DISTANCE: 20000,
-
-  // Taille du cache des médias en octets (50 Mo)
   MEDIA_CACHE_SIZE: 50 * 1024 * 1024,
-
-  // Délai de notification quotidienne par défaut ("12:00")
   DEFAULT_NOTIFICATION_TIME: "12:00",
 };
 
-// Mode de fonctionnement de l'application
 export enum AppMode {
-  ONLINE = "online", // Mode connecté au backend
-  OFFLINE = "offline", // Mode hors-ligne avec données locales
-  HYBRID = "hybrid", // Mode hybride (préférence online, fallback offline)
+  ONLINE = "online",
+  OFFLINE = "offline",
+  HYBRID = "hybrid",
 }
-
-// Le mode par défaut de l'application
 export const DEFAULT_APP_MODE = AppMode.HYBRID;
 
-/**
- * Déterminer si l'application doit fonctionner en mode online ou offline
- * Cette fonction peut être modifiée pour implémenter une logique plus complexe
- * ex: vérifier la qualité de la connexion, le mode économie de données, etc.
- */
-export const shouldUseOnlineMode = (): boolean => {
-  // Par défaut, on vérifie simplement si l'appareil est connecté à Internet
-  return typeof navigator !== "undefined" && navigator.onLine;
+// Generic fetch wrapper and types
+export type FetchOptions = {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: any;
 };
-
-/**
- * Configuration des endpoints de l'API
- * Cela permet de centraliser tous les endpoints et de faciliter les modifications
- */
-export const API_ENDPOINTS = {
-  // Auth
-  AUTH: {
-    REGISTER: "/api/auth/register",
-    LOGIN: "/api/auth/login",
-    ME: "/api/auth/me",
-  },
-
-  // Users
-  USERS: {
-    LIST: "/api/users",
-    ME: "/api/users/me",
-    BY_ID: (id: string) => `/api/users/${id}`,
-  },
-
-  // Friends
-  FRIENDS: {
-    LIST: "/api/friends",
-    REQUESTS: "/api/friends/requests",
-    FIND: "/api/friends/find",
-    REQUEST: (userId: string) => `/api/friends/request/${userId}`,
-    ACCEPT: (requestId: string) => `/api/friends/accept/${requestId}`,
-    REJECT: (requestId: string) => `/api/friends/reject/${requestId}`,
-    DELETE: (userId: string) => `/api/friends/${userId}`,
-  },
-
-  // Messages
-  MESSAGES: {
-    DIRECT: (userId: string) => `/api/messages/${userId}`,
-    GROUP: (groupId: string) => `/api/messages/groups/${groupId}`,
-    DELETE: (messageId: string) => `/api/messages/${messageId}`,
-  },
-
-  // Groups
-  GROUPS: {
-    LIST: "/api/groups",
-    CREATE: "/api/groups",
-    BY_ID: (groupId: string) => `/api/groups/${groupId}`,
-    MEMBERS: (groupId: string) => `/api/groups/${groupId}/members`,
-    REMOVE_MEMBER: (groupId: string, userId: string) => `/api/groups/${groupId}/members/${userId}`,
-  },
-
-  // Media
-  MEDIA: {
-    UPLOAD: "/api/media/upload",
-    BY_ID: (mediaId: string) => `/api/media/${mediaId}`,
-  },
-
-  // Stories
-  STORIES: {
-    LIST: "/api/stories",
-    NEARBY: "/api/stories/nearby",
-    CREATE: "/api/stories",
-    BY_ID: (storyId: string) => `/api/stories/${storyId}`,
-    VIEW: (storyId: string) => `/api/stories/${storyId}/view`,
-    LIKE: (storyId: string) => `/api/stories/${storyId}/like`,
-    UNLIKE: (storyId: string) => `/api/stories/${storyId}/unlike`,
-  },
-
-  // Location
-  LOCATION: {
-    UPDATE: "/api/location/update",
-    NEARBY_USERS: "/api/location/nearby/users",
-    PRIVACY: "/api/location/privacy",
-  },
-};
-
-/**
- * Configuration pour les requêtes fetch
- * Permet de définir des options par défaut pour toutes les requêtes fetch
- */
-export const FETCH_CONFIG = {
-  // Utiliser le mode no-cors pour toutes les requêtes
-  NO_CORS: true,
-
-  // Inclure les cookies dans toutes les requêtes
-  INCLUDE_CREDENTIALS: true,
-
-  // Timeout par défaut pour les requêtes (en ms)
-  DEFAULT_TIMEOUT: 15000,
-
-  // Headers par défaut à inclure dans toutes les requêtes
-  DEFAULT_HEADERS: {
+export async function fetchApi<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
+  const url = `${API_URL}${endpoint}`;
+  const token = localStorage.getItem("token");
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const response = await fetch(url, {
+    method: options.method ?? "GET",
+    credentials: "include",
+    headers,
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `${response.status} ${response.statusText}`);
+  }
+  return (await response.json()) as T;
+}
+
+// Auth login helper
+export interface LoginPayload {
+  credential: string;
+  password: string;
+}
+export interface LoginResponse {
+  session_token: string;
+  host: string;
+  path: string;
+  session: boolean;
+  secure: boolean;
+}
+export function login(payload: LoginPayload): Promise<LoginResponse> {
+  return fetchApi<LoginResponse>("auth/login", { method: "POST", body: payload });
+}
+
+// Centralized endpoints, no leading slashes
+export const endpoints = {
+  auth: { register: "auth/register", login: "auth/login", me: "auth/me" },
+  users: { list: "users", me: "users/me", byId: (id: string) => `users/${id}` },
+  friends: {
+    list: "friends",
+    requests: "friends/requests",
+    find: "friends/find",
+    send: (id: string) => `friends/request/${id}`,
+    accept: (id: string) => `friends/accept/${id}`,
+    remove: (id: string) => `friends/${id}`,
+  },
+  messages: {
+    direct: (id: string) => `messages/${id}`,
+    send: (id: string) => `messages/${id}`,
+    media: (id: string, text?: string) =>
+      `messages/${id}/media${text ? `?text_content=${encodeURIComponent(text)}` : ""}`,
+    group: {
+      list: (g: string) => `messages/groups/${g}`,
+      send: (g: string) => `messages/groups/${g}`,
+      media: (g: string, t?: string) =>
+        `messages/groups/${g}/media${t ? `?text_content=${encodeURIComponent(t)}` : ""}`,
+    },
+  },
+  groups: {
+    list: "groups",
+    byId: (g: string) => `groups/${g}`,
+    create: "groups",
+    update: (g: string) => `groups/${g}`,
+    addMembers: (g: string) => `groups/${g}/members`,
+    removeMember: (g: string, u: string) => `groups/${g}/members/${u}`,
+    delete: (g: string) => `groups/${g}`,
+  },
+  stories: {
+    list: "stories",
+    nearby: "stories/nearby",
+    create: "stories",
+    byId: (s: string) => `stories/${s}`,
+    delete: (s: string) => `stories/${s}`,
+    upload: (type = "Point", coords?: [number, number]) =>
+      `stories/media?type=${type}${coords ? `&coordinates=[${coords[0]},${coords[1]}]` : ""}`,
+  },
+  location: {
+    update: "location/update",
+    nearbyUsers: (lon: number, lat: number, r = 5000, l = 50) =>
+      `location/nearby/users?longitude=${lon}&latitude=${lat}&radius=${r}&limit=${l}`,
   },
 };
-
-/**
- * Fonction utilitaire pour faire des requêtes à l'API en respectant le mode no-cors
- * @param endpoint URL de l'endpoint API
- * @param options Options de la requête
- */
-export const fetchApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
-  try {
-    const url = `${API_URL}${endpoint}`;
-
-    // Configurer les options avec no-cors si activé
-    const fetchOptions: RequestInit = {
-      ...options,
-      headers: {
-        ...FETCH_CONFIG.DEFAULT_HEADERS,
-        ...options.headers,
-      },
-    };
-
-    // Ajouter le mode no-cors si activé
-    if (FETCH_CONFIG.NO_CORS) {
-      fetchOptions.mode = "no-cors";
-    }
-
-    // Ajouter les credentials si activé
-    if (FETCH_CONFIG.INCLUDE_CREDENTIALS) {
-      fetchOptions.credentials = "include";
-    }
-
-    // Exécuter la requête avec un timeout
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error("Request timeout")), FETCH_CONFIG.DEFAULT_TIMEOUT);
-    });
-
-    // Race entre la requête et le timeout
-    const response = await Promise.race([fetch(url, fetchOptions), timeoutPromise]);
-
-    // Avec no-cors, on ne peut pas accéder au contenu de la réponse
-    // Donc on retourne simplement un succès
-    if (FETCH_CONFIG.NO_CORS) {
-      return { success: true };
-    }
-
-    // Sinon, on traite la réponse normalement
-    if (!response || !(response instanceof Response)) {
-      throw new Error("Invalid response");
-    }
-
-    // Vérifier si la réponse est OK
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status} ${response.statusText}`);
-    }
-
-    // Essayer de parser la réponse comme JSON
-    try {
-      return await response.json();
-    } catch (e) {
-      // Si pas de JSON, retourner le texte
-      return await response.text();
-    }
-  } catch (error) {
-    console.error(`Error fetching ${endpoint}:`, error);
-    // Retourner un objet d'erreur plutôt que de lever une exception
-    // afin que le code appelant puisse continuer à fonctionner
-    return {
-      error: true,
-      message: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-};
+export const API_ENDPOINTS = endpoints;
