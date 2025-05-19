@@ -3,7 +3,7 @@
  */
 
 // URL de base de l'API
-export const API_URL = import.meta.env.VITE_API_URL as string;
+export const API_URL = import.meta.env.VITE_API_URL || "http://192.168.1.11";
 
 // Version de l'API
 export const API_VERSION = "1.0.0";
@@ -65,67 +65,156 @@ export const shouldUseOnlineMode = (): boolean => {
 export const API_ENDPOINTS = {
   // Auth
   AUTH: {
-    REGISTER: "auth/register",
-    LOGIN: "auth/login",
-    ME: "auth/me",
+    REGISTER: "/api/auth/register",
+    LOGIN: "/api/auth/login",
+    ME: "/api/auth/me",
   },
 
   // Users
   USERS: {
-    LIST: "users",
-    ME: "users/me",
-    BY_ID: (id: string) => `users/${id}`,
+    LIST: "/api/users",
+    ME: "/api/users/me",
+    BY_ID: (id: string) => `/api/users/${id}`,
   },
 
   // Friends
   FRIENDS: {
-    LIST: "friends",
-    REQUESTS: "friends/requests",
-    FIND: "friends/find",
-    REQUEST: (userId: string) => `friends/request/${userId}`,
-    ACCEPT: (requestId: string) => `friends/accept/${requestId}`,
-    REJECT: (requestId: string) => `friends/reject/${requestId}`,
-    DELETE: (userId: string) => `friends/${userId}`,
+    LIST: "/api/friends",
+    REQUESTS: "/api/friends/requests",
+    FIND: "/api/friends/find",
+    REQUEST: (userId: string) => `/api/friends/request/${userId}`,
+    ACCEPT: (requestId: string) => `/api/friends/accept/${requestId}`,
+    REJECT: (requestId: string) => `/api/friends/reject/${requestId}`,
+    DELETE: (userId: string) => `/api/friends/${userId}`,
   },
 
   // Messages
   MESSAGES: {
-    DIRECT: (userId: string) => `messages/${userId}`,
-    GROUP: (groupId: string) => `messages/groups/${groupId}`,
-    DELETE: (messageId: string) => `messages/${messageId}`,
+    DIRECT: (userId: string) => `/api/messages/${userId}`,
+    GROUP: (groupId: string) => `/api/messages/groups/${groupId}`,
+    DELETE: (messageId: string) => `/api/messages/${messageId}`,
   },
 
   // Groups
   GROUPS: {
-    LIST: "groups",
-    CREATE: "groups",
-    BY_ID: (groupId: string) => `groups/${groupId}`,
-    MEMBERS: (groupId: string) => `groups/${groupId}/members`,
-    REMOVE_MEMBER: (groupId: string, userId: string) =>
-      `groups/${groupId}/members/${userId}`,
+    LIST: "/api/groups",
+    CREATE: "/api/groups",
+    BY_ID: (groupId: string) => `/api/groups/${groupId}`,
+    MEMBERS: (groupId: string) => `/api/groups/${groupId}/members`,
+    REMOVE_MEMBER: (groupId: string, userId: string) => `/api/groups/${groupId}/members/${userId}`,
   },
 
   // Media
   MEDIA: {
-    UPLOAD: "media/upload",
-    BY_ID: (mediaId: string) => `media/${mediaId}`,
+    UPLOAD: "/api/media/upload",
+    BY_ID: (mediaId: string) => `/api/media/${mediaId}`,
   },
 
   // Stories
   STORIES: {
-    LIST: "stories",
-    NEARBY: "stories/nearby",
-    CREATE: "stories",
-    BY_ID: (storyId: string) => `stories/${storyId}`,
-    VIEW: (storyId: string) => `stories/${storyId}/view`,
-    LIKE: (storyId: string) => `stories/${storyId}/like`,
-    UNLIKE: (storyId: string) => `stories/${storyId}/unlike`,
+    LIST: "/api/stories",
+    NEARBY: "/api/stories/nearby",
+    CREATE: "/api/stories",
+    BY_ID: (storyId: string) => `/api/stories/${storyId}`,
+    VIEW: (storyId: string) => `/api/stories/${storyId}/view`,
+    LIKE: (storyId: string) => `/api/stories/${storyId}/like`,
+    UNLIKE: (storyId: string) => `/api/stories/${storyId}/unlike`,
   },
 
   // Location
   LOCATION: {
-    UPDATE: "location/update",
-    NEARBY_USERS: "location/nearby/users",
-    PRIVACY: "location/privacy",
+    UPDATE: "/api/location/update",
+    NEARBY_USERS: "/api/location/nearby/users",
+    PRIVACY: "/api/location/privacy",
   },
+};
+
+/**
+ * Configuration pour les requêtes fetch
+ * Permet de définir des options par défaut pour toutes les requêtes fetch
+ */
+export const FETCH_CONFIG = {
+  // Utiliser le mode no-cors pour toutes les requêtes
+  NO_CORS: true,
+
+  // Inclure les cookies dans toutes les requêtes
+  INCLUDE_CREDENTIALS: true,
+
+  // Timeout par défaut pour les requêtes (en ms)
+  DEFAULT_TIMEOUT: 15000,
+
+  // Headers par défaut à inclure dans toutes les requêtes
+  DEFAULT_HEADERS: {
+    "Content-Type": "application/json",
+  },
+};
+
+/**
+ * Fonction utilitaire pour faire des requêtes à l'API en respectant le mode no-cors
+ * @param endpoint URL de l'endpoint API
+ * @param options Options de la requête
+ */
+export const fetchApi = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
+  try {
+    const url = `${API_URL}${endpoint}`;
+
+    // Configurer les options avec no-cors si activé
+    const fetchOptions: RequestInit = {
+      ...options,
+      headers: {
+        ...FETCH_CONFIG.DEFAULT_HEADERS,
+        ...options.headers,
+      },
+    };
+
+    // Ajouter le mode no-cors si activé
+    if (FETCH_CONFIG.NO_CORS) {
+      fetchOptions.mode = "no-cors";
+    }
+
+    // Ajouter les credentials si activé
+    if (FETCH_CONFIG.INCLUDE_CREDENTIALS) {
+      fetchOptions.credentials = "include";
+    }
+
+    // Exécuter la requête avec un timeout
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("Request timeout")), FETCH_CONFIG.DEFAULT_TIMEOUT);
+    });
+
+    // Race entre la requête et le timeout
+    const response = await Promise.race([fetch(url, fetchOptions), timeoutPromise]);
+
+    // Avec no-cors, on ne peut pas accéder au contenu de la réponse
+    // Donc on retourne simplement un succès
+    if (FETCH_CONFIG.NO_CORS) {
+      return { success: true };
+    }
+
+    // Sinon, on traite la réponse normalement
+    if (!response || !(response instanceof Response)) {
+      throw new Error("Invalid response");
+    }
+
+    // Vérifier si la réponse est OK
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+
+    // Essayer de parser la réponse comme JSON
+    try {
+      return await response.json();
+    } catch (e) {
+      // Si pas de JSON, retourner le texte
+      return await response.text();
+    }
+  } catch (error) {
+    console.error(`Error fetching ${endpoint}:`, error);
+    // Retourner un objet d'erreur plutôt que de lever une exception
+    // afin que le code appelant puisse continuer à fonctionner
+    return {
+      error: true,
+      message: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
 };

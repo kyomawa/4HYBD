@@ -10,7 +10,7 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  profilePicture?: string | null; // Modifié pour accepter null
+  profilePicture?: string | null;
   fullName?: string;
   bio?: string;
   following?: string[];
@@ -46,6 +46,34 @@ const isOnline = (): boolean => {
 };
 
 /**
+ * Effectue une requête no-cors vers le backend
+ * @param url URL à appeler
+ * @param options Options de la requête
+ * @returns Promise avec la réponse mockée
+ */
+const makeNoCorsRequest = async (url: string, options: RequestInit = {}): Promise<any> => {
+  try {
+    // Ajouter mode: 'no-cors' à toutes les requêtes
+    const updatedOptions = {
+      ...options,
+      mode: "no-cors",
+      credentials: "include",
+    };
+
+    // Effectuer la requête
+    // Note: avec no-cors, nous ne pouvons pas accéder à la réponse
+    await fetch(url, updatedOptions);
+
+    // Comme nous ne pouvons pas lire la réponse en mode no-cors,
+    // nous devons simuler une réponse de succès
+    return { success: true };
+  } catch (error) {
+    console.error(`Error making no-cors request to ${url}:`, error);
+    throw error;
+  }
+};
+
+/**
  * Register a new user
  * @param email User email
  * @param username User username
@@ -56,7 +84,7 @@ export const register = async (email: string, username: string, password: string
   try {
     if (isOnline()) {
       // Online mode: Use the API
-      const response = await fetch(`${API_URL}${API_ENDPOINTS.AUTH.REGISTER}`, {
+      await makeNoCorsRequest(`${API_URL}${API_ENDPOINTS.AUTH.REGISTER}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -66,46 +94,30 @@ export const register = async (email: string, username: string, password: string
           password,
           username,
         }),
-        mode: "no-cors", // Added no-cors mode
       });
 
-      // Note: With no-cors mode, we can't access response data properly
-      // For development, we'll need to mock the success response
-      const mockData = {
-        token: "mock_token_" + Math.random().toString(36).substring(2),
-        user: {
-          _id: "user_" + Math.random().toString(36).substring(2),
-          email,
-          username,
-          avatar: null,
-          bio: "",
-          display_name: "",
-          created_at: new Date().toISOString(),
-          role: "User",
-        },
-      };
+      // Générer un token factice pour le développement
+      const mockToken = "mock_token_" + Math.random().toString(36).substring(2);
+      await saveAuthToken(mockToken);
 
-      // Save token
-      await saveAuthToken(mockData.token);
-
-      // Convert API user format to local format
-      const user: User = {
-        id: mockData.user._id,
-        email: mockData.user.email,
-        username: mockData.user.username,
-        profilePicture: mockData.user.avatar, // null est maintenant accepté
-        bio: mockData.user.bio,
-        fullName: mockData.user.display_name,
+      // Créer un utilisateur factice pour le développement
+      const mockUser: User = {
+        id: "user_" + Math.random().toString(36).substring(2),
+        email,
+        username,
+        profilePicture: null,
+        bio: "",
+        fullName: "",
         following: [],
         followers: [],
-        createdAt: new Date(mockData.user.created_at).getTime(),
-        role: mockData.user.role,
+        createdAt: Date.now(),
+        role: "User",
       };
 
       // Save user data
-      await saveCurrentUser(user);
+      await saveCurrentUser(mockUser);
 
-      return user;
+      return mockUser;
     } else {
       // Offline mode: Cannot register without internet
       throw new Error("Cannot register while offline");
@@ -126,29 +138,27 @@ export const login = async (emailOrUsername: string, password: string): Promise<
   try {
     if (isOnline()) {
       // Online mode: Use the API
-      const response = await fetch(`${API_URL}${API_ENDPOINTS.AUTH.LOGIN}`, {
+      await makeNoCorsRequest(`${API_URL}${API_ENDPOINTS.AUTH.LOGIN}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include",
         body: JSON.stringify({
           credential: emailOrUsername,
           password,
         }),
-        mode: "no-cors", // Added no-cors mode
       });
 
-      // With no-cors, we need to mock the response
+      // Générer un token factice pour le développement
       const mockToken = "mock_token_" + Math.random().toString(36).substring(2);
       await saveAuthToken(mockToken);
 
-      // Mock user data for development
+      // Créer un utilisateur factice pour le développement
       const mockUser: User = {
         id: "user_" + Math.random().toString(36).substring(2),
         email: emailOrUsername.includes("@") ? emailOrUsername : "user@example.com",
         username: emailOrUsername.includes("@") ? emailOrUsername.split("@")[0] : emailOrUsername,
-        profilePicture: null, // null est maintenant accepté
+        profilePicture: null,
         bio: "Test user bio",
         fullName: "Test User",
         following: [],
@@ -163,7 +173,6 @@ export const login = async (emailOrUsername: string, password: string): Promise<
       return mockUser;
     } else {
       // Try to use cached credentials for offline login
-      // This is a simplified offline login that just checks if the user exists locally
       const result = await Preferences.get({ key: USER_DATA_KEY });
       if (!result.value) {
         throw new Error("Cannot login while offline");
@@ -190,12 +199,10 @@ export const login = async (emailOrUsername: string, password: string): Promise<
 const getUserProfile = async (token: string): Promise<User> => {
   try {
     // No-cors request
-    await fetch(`${API_URL}${API_ENDPOINTS.USERS.ME}`, {
+    await makeNoCorsRequest(`${API_URL}${API_ENDPOINTS.USERS.ME}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
-      credentials: "include",
-      mode: "no-cors",
     });
 
     // Mock data since we can't read response with no-cors
@@ -216,7 +223,7 @@ const getUserProfile = async (token: string): Promise<User> => {
       id: mockData._id,
       email: mockData.email,
       username: mockData.username,
-      profilePicture: mockData.avatar, // null est maintenant accepté
+      profilePicture: mockData.avatar,
       bio: mockData.bio,
       fullName: mockData.display_name,
       following: mockData.following || [],
@@ -241,11 +248,10 @@ export const getUserById = async (userId: string): Promise<User | null> => {
       const token = await getAuthToken();
 
       // Make no-cors request
-      await fetch(`${API_URL}${API_ENDPOINTS.USERS.BY_ID(userId)}`, {
+      await makeNoCorsRequest(`${API_URL}${API_ENDPOINTS.USERS.BY_ID(userId)}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        mode: "no-cors",
       });
 
       // Mock data
@@ -267,7 +273,7 @@ export const getUserById = async (userId: string): Promise<User | null> => {
         id: mockData._id,
         username: mockData.username,
         email: mockData.email,
-        profilePicture: mockData.avatar, // null est maintenant accepté
+        profilePicture: mockData.avatar,
         bio: mockData.bio,
         fullName: mockData.display_name,
         following: mockData.following || [],
@@ -414,14 +420,13 @@ export const updateUserProfile = async (userData: Partial<User>): Promise<User> 
       }
 
       // Make no-cors request
-      await fetch(`${API_URL}${API_ENDPOINTS.USERS.ME}`, {
+      await makeNoCorsRequest(`${API_URL}${API_ENDPOINTS.USERS.ME}`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(apiUserData),
-        mode: "no-cors",
       });
 
       // Mock updated data
@@ -518,12 +523,11 @@ export const followUser = async (userId: string): Promise<User> => {
       const token = await getAuthToken();
 
       // Make no-cors request
-      await fetch(`${API_URL}${API_ENDPOINTS.FRIENDS.REQUEST(userId)}`, {
+      await makeNoCorsRequest(`${API_URL}${API_ENDPOINTS.FRIENDS.REQUEST(userId)}`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        mode: "no-cors",
       });
 
       // Optimistically update following list
@@ -619,12 +623,11 @@ export const unfollowUser = async (userId: string): Promise<User> => {
       const token = await getAuthToken();
 
       // Make no-cors request
-      await fetch(`${API_URL}${API_ENDPOINTS.FRIENDS.DELETE(userId)}`, {
+      await makeNoCorsRequest(`${API_URL}${API_ENDPOINTS.FRIENDS.DELETE(userId)}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        mode: "no-cors",
       });
 
       // Update following list
@@ -681,14 +684,13 @@ export const searchUsers = async (query: string): Promise<User[]> => {
       const token = await getAuthToken();
 
       // Make no-cors request
-      await fetch(`${API_URL}${API_ENDPOINTS.FRIENDS.FIND}`, {
+      await makeNoCorsRequest(`${API_URL}${API_ENDPOINTS.FRIENDS.FIND}`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ query }),
-        mode: "no-cors",
       });
 
       // Mock data
@@ -698,7 +700,7 @@ export const searchUsers = async (query: string): Promise<User[]> => {
           id: `user_${i}_${Math.random().toString(36).substring(2, 5)}`,
           username: `user${i}_${query}`,
           email: `user${i}_${query}@example.com`,
-          profilePicture: null, // null est maintenant accepté
+          profilePicture: null,
           bio: `Bio for user ${i}`,
           fullName: `User ${i} ${query}`,
           following: [],
@@ -735,7 +737,7 @@ export const getUsersByIds = async (userIds: string[]): Promise<User[]> => {
         id: userId,
         username: `user_${userId.substring(0, 5)}`,
         email: `user_${userId.substring(0, 5)}@example.com`,
-        profilePicture: null, // null est maintenant accepté
+        profilePicture: null,
         bio: `Bio for user ${index}`,
         fullName: `User ${index}`,
         following: [],

@@ -1,16 +1,10 @@
 import { Camera, CameraResultType, CameraSource, Photo, CameraOptions } from "@capacitor/camera";
 import { Capacitor } from "@capacitor/core";
-import { v4 as uuidv4 } from "uuid";
-import { savePhoto } from "./storage.service";
+import { Preferences } from "@capacitor/preferences";
 import { getCurrentLocation } from "./location.service";
 
-// Use crypto.randomUUID or Math.random as a fallback for uuid
-const generateUUID = (): string => {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return "id_" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-};
+// Clé pour stocker les photos simulées en mode web
+const WEB_MOCK_PHOTOS_KEY = "web_mock_photos";
 
 export interface PhotoOptions extends Partial<CameraOptions> {
   source?: CameraSource;
@@ -28,8 +22,83 @@ export interface PhotoData {
     accuracy: number;
   };
   type: "photo" | "story";
-  expireAt?: number; // For stories
+  expireAt?: number; // Pour les stories
+  serverUrl?: string; // URL sur le serveur après upload
 }
+
+/**
+ * Vérifie si l'application s'exécute sur le web
+ */
+const isRunningOnWeb = (): boolean => {
+  return Capacitor.getPlatform() === "web";
+};
+
+/**
+ * Génère un ID unique
+ */
+const generateUUID = (): string => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "id_" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+};
+
+/**
+ * Retourne une image simulée pour les tests sur le web
+ */
+const getMockWebPhoto = async (): Promise<Photo> => {
+  // Utiliser une image de placeholder
+  const mockPhotoUrl = "https://picsum.photos/800/600";
+
+  try {
+    // Télécharger l'image
+    const response = await fetch(mockPhotoUrl);
+    const blob = await response.blob();
+
+    // Convertir en dataURL
+    const reader = new FileReader();
+    const dataUrlPromise = new Promise<string>((resolve) => {
+      reader.onloadend = () => {
+        resolve(reader.result as string);
+      };
+    });
+
+    reader.readAsDataURL(blob);
+    const dataUrl = await dataUrlPromise;
+
+    // Créer un objet URL pour le webPath
+    const webPath = URL.createObjectURL(blob);
+
+    return {
+      webPath,
+      dataUrl,
+      format: "jpeg",
+      saved: false,
+    };
+  } catch (error) {
+    console.error("Erreur lors de la récupération de l'image simulée:", error);
+    throw new Error("Impossible de simuler une photo sur le web");
+  }
+};
+
+/**
+ * Sauvegarde une photo simulée pour le web
+ */
+const saveWebMockPhoto = async (photo: PhotoData): Promise<void> => {
+  try {
+    const result = await Preferences.get({ key: WEB_MOCK_PHOTOS_KEY });
+    const photos = result.value ? JSON.parse(result.value) : [];
+
+    photos.push(photo);
+
+    await Preferences.set({
+      key: WEB_MOCK_PHOTOS_KEY,
+      value: JSON.stringify(photos),
+    });
+  } catch (error) {
+    console.error("Erreur lors de la sauvegarde de la photo simulée:", error);
+  }
+};
 
 /**
  * Take a picture using the device camera
@@ -59,6 +128,12 @@ export const takePicture = async (options: PhotoOptions = {}): Promise<Photo> =>
   const cameraOptions: CameraOptions = { ...defaultOptions, ...options };
 
   try {
+    // Si nous sommes sur le web, utiliser l'approche de simulation
+    if (isRunningOnWeb()) {
+      console.log("Exécution sur le Web - utilisation d'une photo simulée");
+      return await getMockWebPhoto();
+    }
+
     // Request camera permissions
     const permissionStatus = await Camera.checkPermissions();
 
@@ -95,6 +170,13 @@ export const takePicture = async (options: PhotoOptions = {}): Promise<Photo> =>
     return photo;
   } catch (error) {
     console.error("Error taking picture:", error);
+
+    // Si nous sommes sur le web et qu'il y a une erreur, essayer de simuler une photo
+    if (isRunningOnWeb()) {
+      console.log("Tentative de simulation d'une photo sur le web après erreur");
+      return await getMockWebPhoto();
+    }
+
     throw error;
   }
 };
@@ -117,7 +199,6 @@ export const createPhotoWithLocation = async (
     // Get location if requested
     if (withLocation) {
       try {
-        // Utiliser getCurrentLocation au lieu de Geolocation directement
         const location = await getCurrentLocation();
         if (location) {
           locationData = {
@@ -135,7 +216,7 @@ export const createPhotoWithLocation = async (
     // Create photo data object
     const now = Date.now();
     const photoData: PhotoData = {
-      id: generateUUID(), // Utiliser generateUUID au lieu de uuidv4
+      id: generateUUID(),
       webPath: photo.webPath || "",
       timestamp: now,
       dataUrl: photo.dataUrl,
@@ -145,8 +226,14 @@ export const createPhotoWithLocation = async (
       expireAt: type === "story" ? now + 24 * 60 * 60 * 1000 : undefined,
     };
 
-    // Save photo to storage
-    await savePhoto(photoData);
+    // Si nous sommes sur le web, sauvegarder dans les photos simulées
+    if (isRunningOnWeb()) {
+      await saveWebMockPhoto(photoData);
+    } else {
+      // Save photo to storage si non-web (implémenté dans savePhoto du service storage)
+      const { savePhoto } = await import("./storage.service");
+      await savePhoto(photoData);
+    }
 
     return photoData;
   } catch (error) {
@@ -172,4 +259,73 @@ export const dataUrlToBlob = (dataUrl: string): Blob => {
   }
 
   return new Blob([u8arr], { type: mime });
+};
+
+/**
+ * Simuler un téléchargement de photo vers le serveur
+ */
+export const uploadPhotoToServer = async (photoData: PhotoData): Promise<string | null> => {
+  try {
+    // Simuler un délai réseau
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Créer une URL de serveur simulée
+    const serverUrl = `http://localhost:9000/snapshoot-media/media_${photoData.id}.jpg`;
+
+    // Mettre à jour la photo avec l'URL du serveur
+    const photos = await getPhotos();
+    const photoIndex = photos.findIndex((p) => p.id === photoData.id);
+
+    if (photoIndex !== -1) {
+      photos[photoIndex].serverUrl = serverUrl;
+
+      // Sauvegarder les photos mises à jour
+      await savePhotos(photos);
+    }
+
+    return serverUrl;
+  } catch (error) {
+    console.error("Erreur lors du téléchargement de la photo vers le serveur:", error);
+    return null;
+  }
+};
+
+/**
+ * Obtenir toutes les photos stockées
+ */
+export const getPhotos = async (): Promise<PhotoData[]> => {
+  try {
+    if (isRunningOnWeb()) {
+      // Obtenir les photos simulées sur le web
+      const result = await Preferences.get({ key: WEB_MOCK_PHOTOS_KEY });
+      return result.value ? JSON.parse(result.value) : [];
+    } else {
+      // Utiliser le service de stockage normal
+      const { getPhotos: getStoragePhotos } = await import("./storage.service");
+      return await getStoragePhotos();
+    }
+  } catch (error) {
+    console.error("Erreur lors de la récupération des photos:", error);
+    return [];
+  }
+};
+
+/**
+ * Sauvegarder toutes les photos
+ */
+export const savePhotos = async (photos: PhotoData[]): Promise<void> => {
+  try {
+    if (isRunningOnWeb()) {
+      // Sauvegarder les photos simulées sur le web
+      await Preferences.set({
+        key: WEB_MOCK_PHOTOS_KEY,
+        value: JSON.stringify(photos),
+      });
+    } else {
+      // Implémenter si nécessaire pour les plateformes natives
+      // Cette fonction est généralement traitée par le storage.service
+    }
+  } catch (error) {
+    console.error("Erreur lors de la sauvegarde des photos:", error);
+  }
 };
