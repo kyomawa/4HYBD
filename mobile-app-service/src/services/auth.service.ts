@@ -203,6 +203,67 @@ const getUserProfile = async (token: string): Promise<User> => {
 };
 
 /**
+ * Get a user by ID
+ * @param userId User ID
+ * @returns Promise with the user data
+ */
+export const getUserById = async (userId: string): Promise<User | null> => {
+  try {
+    if (isOnline()) {
+      const token = await getAuthToken();
+
+      const response = await fetch(`${API_URL}${API_ENDPOINTS.USERS.BY_ID(userId)}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("User not found");
+      }
+
+      const data = await response.json();
+
+      // Convert API response to our format
+      return {
+        id: data._id || data.id,
+        username: data.username,
+        email: data.email,
+        profilePicture: data.avatar,
+        bio: data.bio,
+        fullName: data.display_name,
+        following: data.following || [],
+        followers: data.followers || [],
+        createdAt: new Date(data.created_at).getTime(),
+        role: data.role,
+      };
+    } else {
+      // Check local cache
+      if (userId === "me") {
+        return await getCurrentUser();
+      }
+
+      // Try to find in followed users cache
+      const FOLLOWED_USERS_CACHE_KEY = "followed_users_cache";
+      const result = await Preferences.get({ key: FOLLOWED_USERS_CACHE_KEY });
+
+      if (result.value) {
+        const cachedUsers: Record<string, User> = JSON.parse(result.value);
+
+        if (cachedUsers[userId]) {
+          return cachedUsers[userId];
+        }
+      }
+
+      return null;
+    }
+  } catch (error) {
+    console.error(`Error getting user by ID ${userId}:`, error);
+    return null;
+  }
+};
+
+/**
  * Logout the current user
  */
 export const logout = async (): Promise<void> => {
@@ -643,67 +704,6 @@ export const searchUsers = async (query: string): Promise<User[]> => {
 };
 
 /**
- * Get a user by ID
- * @param userId User ID
- * @returns Promise with the user data
- */
-export const getUserById = async (userId: string): Promise<User | null> => {
-  try {
-    if (isOnline()) {
-      const token = await getAuthToken();
-
-      const response = await fetch(`${API_URL}${API_ENDPOINTS.USERS.BY_ID(userId)}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("User not found");
-      }
-
-      const data = await response.json();
-
-      // Convert API response to our format
-      return {
-        id: data._id || data.id,
-        username: data.username,
-        email: data.email,
-        profilePicture: data.avatar,
-        bio: data.bio,
-        fullName: data.display_name,
-        following: data.following || [],
-        followers: data.followers || [],
-        createdAt: new Date(data.created_at).getTime(),
-        role: data.role,
-      };
-    } else {
-      // Check local cache
-      if (userId === "me") {
-        return await getCurrentUser();
-      }
-
-      // Try to find in followed users cache
-      const FOLLOWED_USERS_CACHE_KEY = "followed_users_cache";
-      const result = await Preferences.get({ key: FOLLOWED_USERS_CACHE_KEY });
-
-      if (result.value) {
-        const cachedUsers: Record<string, User> = JSON.parse(result.value);
-
-        if (cachedUsers[userId]) {
-          return cachedUsers[userId];
-        }
-      }
-
-      return null;
-    }
-  } catch (error) {
-    console.error(`Error getting user by ID ${userId}:`, error);
-    return null;
-  }
-};
-
-/**
  * Get multiple users by IDs
  * @param userIds Array of user IDs
  * @returns Array of users
@@ -747,7 +747,16 @@ export const getUsersByIds = async (userIds: string[]): Promise<User[]> => {
       });
 
       const users = await Promise.all(userPromises);
-      return users.filter((user): user is User => user !== null);
+
+      // Approche plus simple sans prédicat de type
+      const validUsers: User[] = [];
+      for (const user of users) {
+        if (user !== null) {
+          validUsers.push(user as User);
+        }
+      }
+
+      return validUsers;
     } catch (error) {
       console.error("Error getting users by IDs:", error);
       return [];
