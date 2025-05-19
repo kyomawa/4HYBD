@@ -19,3 +19,4 @@ jsonwebtoken = "9.3.1"
 bcrypt = "0.17"
 reqwest = { version = "0.12.15", features = ["json"] }
 uuid = { version = "1.16.0", features = ["v4"] }
+actix-cors = "0.7.1"

@@ -96,7 +96,7 @@ services:
       - "traefik.http.routers.mobile.rule=Host(`localhost`) && !PathPrefix(`/api`)"
       - "traefik.http.routers.mobile.priority=20"
     environment:
-      - API_URL=http://${EXTERNAL_HOST_IP}/api/
+      - VITE_API_URL=http://${EXTERNAL_HOST_IP}/api/
       - CHOKIDAR_USEPOLLING=true
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8100"]
@@ -118,6 +118,7 @@ services:
       - database
     environment:
       DATABASE_URL: ${DATABASE_URL}
+      EXTERNAL_HOST_IP: ${EXTERNAL_HOST_IP}
       JWT_SIGNATURE: ${JWT_SIGNATURE}
     labels:
       - "traefik.enable=true"

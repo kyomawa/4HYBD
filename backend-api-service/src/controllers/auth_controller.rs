@@ -4,7 +4,9 @@ use crate::{
     utils::{api_response::ApiResponse, jwt::get_authenticated_user},
 };
 use actix_web::{
-    HttpRequest, HttpResponse, Responder, get, post,
+    HttpRequest, HttpResponse, Responder,
+    cookie::Cookie,
+    get, post,
     web::{self, Data, Json, ServiceConfig},
 };
 use mongodb::Database;
@@ -40,9 +42,16 @@ async fn register(db: Data<Database>, data: Json<AuthRegister>) -> impl Responde
     let data = data.into_inner();
 
     match auth_service::register(&db, data).await {
-        Ok(user) => {
-            let res = ApiResponse::success("User created successfully", user);
-            HttpResponse::Ok().json(res)
+        Ok(auth_response) => {
+            let cookie = Cookie::build("token", auth_response.token.clone())
+                .path("/")
+                .http_only(true)
+                .secure(false)
+                .max_age(actix_web::cookie::time::Duration::hours(6))
+                .finish();
+
+            let res = ApiResponse::success("User created successfully", auth_response);
+            HttpResponse::Ok().cookie(cookie).json(res)
         }
         Err(e) => {
             let res = ApiResponse::error("Failed to create user", e.to_string());
@@ -58,9 +67,15 @@ async fn login(db: Data<Database>, data: Json<AuthLogin>) -> impl Responder {
     let data = data.into_inner();
 
     match auth_service::login(&db, data).await {
-        Ok(user) => {
-            let res = ApiResponse::success("User connected successfully", user);
-            HttpResponse::Ok().json(res)
+        Ok(auth_response) => {
+            let cookie = Cookie::build("session_token", auth_response.token.clone())
+                .path("/")
+                .http_only(true)
+                .secure(false)
+                .finish();
+
+            let res = ApiResponse::success("User connected successfully", auth_response);
+            HttpResponse::Ok().cookie(cookie).json(res)
         }
         Err(e) => {
             let res = ApiResponse::error("Failed to login the user", e.to_string());

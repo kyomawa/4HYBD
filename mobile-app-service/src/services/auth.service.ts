@@ -52,7 +52,11 @@ const isOnline = (): boolean => {
  * @param password User password
  * @returns Promise with the user data
  */
-export const register = async (email: string, username: string, password: string): Promise<User> => {
+export const register = async (
+  email: string,
+  username: string,
+  password: string,
+): Promise<User> => {
   try {
     if (isOnline()) {
       // Online mode: Use the API
@@ -112,7 +116,10 @@ export const register = async (email: string, username: string, password: string
  * @param password User password
  * @returns Promise with the user data
  */
-export const login = async (emailOrUsername: string, password: string): Promise<User> => {
+export const login = async (
+  emailOrUsername: string,
+  password: string,
+): Promise<User> => {
   try {
     if (isOnline()) {
       // Online mode: Use the API
@@ -121,12 +128,12 @@ export const login = async (emailOrUsername: string, password: string): Promise<
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({
           credential: emailOrUsername,
           password,
         }),
       });
-
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Login failed");
@@ -176,6 +183,7 @@ const getUserProfile = async (token: string): Promise<User> => {
       headers: {
         Authorization: `Bearer ${token}`,
       },
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -212,11 +220,14 @@ export const getUserById = async (userId: string): Promise<User | null> => {
     if (isOnline()) {
       const token = await getAuthToken();
 
-      const response = await fetch(`${API_URL}${API_ENDPOINTS.USERS.BY_ID(userId)}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        `${API_URL}${API_ENDPOINTS.USERS.BY_ID(userId)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         throw new Error("User not found");
@@ -355,7 +366,9 @@ export const getCurrentUser = async (): Promise<User | null> => {
  * @param userData User data to update
  * @returns Promise with the updated user data
  */
-export const updateUserProfile = async (userData: Partial<User>): Promise<User> => {
+export const updateUserProfile = async (
+  userData: Partial<User>,
+): Promise<User> => {
   try {
     // Get current user
     const currentUser = await getCurrentUser();
@@ -370,8 +383,10 @@ export const updateUserProfile = async (userData: Partial<User>): Promise<User> 
       // Map our internal fields to API fields
       const apiUserData: Record<string, any> = {};
 
-      if (userData.username !== undefined) apiUserData.username = userData.username;
-      if (userData.fullName !== undefined) apiUserData.display_name = userData.fullName;
+      if (userData.username !== undefined)
+        apiUserData.username = userData.username;
+      if (userData.fullName !== undefined)
+        apiUserData.display_name = userData.fullName;
       if (userData.bio !== undefined) apiUserData.bio = userData.bio;
       if (userData.profilePicture !== undefined) {
         // Pour le profil, on définit l'avatar avec l'URL de l'image
@@ -496,12 +511,15 @@ export const followUser = async (userId: string): Promise<User> => {
     if (isOnline()) {
       const token = await getAuthToken();
 
-      const response = await fetch(`${API_URL}${API_ENDPOINTS.FRIENDS.REQUEST(userId)}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        `${API_URL}${API_ENDPOINTS.FRIENDS.REQUEST(userId)}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -563,7 +581,7 @@ const addPendingSocialAction = async (action: SocialAction): Promise<void> => {
 
     // Vérifier s'il existe déjà une action contradictoire pour annuler les deux
     const existingActionIndex = pendingActions.findIndex(
-      (a: SocialAction) => a.userId === action.userId && a.type !== action.type
+      (a: SocialAction) => a.userId === action.userId && a.type !== action.type,
     );
 
     if (existingActionIndex !== -1) {
@@ -600,12 +618,15 @@ export const unfollowUser = async (userId: string): Promise<User> => {
     if (isOnline()) {
       const token = await getAuthToken();
 
-      const response = await fetch(`${API_URL}${API_ENDPOINTS.FRIENDS.DELETE(userId)}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        `${API_URL}${API_ENDPOINTS.FRIENDS.DELETE(userId)}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -613,7 +634,8 @@ export const unfollowUser = async (userId: string): Promise<User> => {
       }
 
       // Update following list
-      const following = currentUser.following?.filter((id) => id !== userId) || [];
+      const following =
+        currentUser.following?.filter((id) => id !== userId) || [];
 
       const updatedUser: User = {
         ...currentUser,
@@ -626,7 +648,8 @@ export const unfollowUser = async (userId: string): Promise<User> => {
       return updatedUser;
     } else {
       // Offline mode: Update only locally
-      const following = currentUser.following?.filter((id) => id !== userId) || [];
+      const following =
+        currentUser.following?.filter((id) => id !== userId) || [];
 
       const updatedUser: User = {
         ...currentUser,
@@ -832,7 +855,10 @@ export const syncPendingSocialActions = async (): Promise<void> => {
         }
         successfulActions.push(action);
       } catch (error) {
-        console.error(`Error syncing social action: ${action.type} for user ${action.userId}`, error);
+        console.error(
+          `Error syncing social action: ${action.type} for user ${action.userId}`,
+          error,
+        );
       }
     }
 
@@ -841,8 +867,10 @@ export const syncPendingSocialActions = async (): Promise<void> => {
       const remainingActions = pendingActions.filter(
         (action) =>
           !successfulActions.some(
-            (successAction) => successAction.type === action.type && successAction.userId === action.userId
-          )
+            (successAction) =>
+              successAction.type === action.type &&
+              successAction.userId === action.userId,
+          ),
       );
 
       // Mettre à jour la liste des actions en attente
