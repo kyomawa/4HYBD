@@ -6,11 +6,11 @@ export const MAX_RETRY_ATTEMPTS: number = 3;
 
 export const APP_CONFIG = {
   MAX_MEDIA_SIZE: 10 * 1024 * 1024,
-  MAX_VIDEO_DURATION: 10,
-  STORY_EXPIRY_TIME: 24 * 60 * 60,
+  MAX_VIDEO_DURATION: 10, // en secondes
+  STORY_EXPIRY_TIME: 24 * 60 * 60, // en secondes
   DATA_REFRESH_INTERVAL: 5 * 60 * 1000,
-  NEARBY_MAX_DISTANCE: 20000,
-  MEDIA_CACHE_SIZE: 50 * 1024 * 1024,
+  NEARBY_MAX_DISTANCE: 20_000, // en mètres
+  MEDIA_CACHE_SIZE: 50 * 1024 * 1024, // en octets
   DEFAULT_NOTIFICATION_TIME: "12:00",
 };
 
@@ -34,7 +34,9 @@ export async function fetchApi<T>(endpoint: string, options: FetchOptions = {}):
     "Content-Type": "application/json",
     ...(options.headers || {}),
   };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
 
   const response = await fetch(url, {
     method: options.method ?? "GET",
@@ -62,13 +64,24 @@ export interface LoginResponse {
   secure: boolean;
 }
 export function login(payload: LoginPayload): Promise<LoginResponse> {
-  return fetchApi<LoginResponse>("auth/login", { method: "POST", body: payload });
+  return fetchApi<LoginResponse>("auth/login", {
+    method: "POST",
+    body: payload,
+  });
 }
 
 // Centralized endpoints, no leading slashes
 export const endpoints = {
-  auth: { register: "auth/register", login: "auth/login", me: "auth/me" },
-  users: { list: "users", me: "users/me", byId: (id: string) => `users/${id}` },
+  auth: {
+    register: "auth/register",
+    login: "auth/login",
+    me: "auth/me",
+  },
+  users: {
+    list: "users",
+    me: "users/me",
+    byId: (id: string) => `users/${id}`,
+  },
   friends: {
     list: "friends",
     requests: "friends/requests",
@@ -82,12 +95,6 @@ export const endpoints = {
     send: (id: string) => `messages/${id}`,
     media: (id: string, text?: string) =>
       `messages/${id}/media${text ? `?text_content=${encodeURIComponent(text)}` : ""}`,
-    group: {
-      list: (g: string) => `messages/groups/${g}`,
-      send: (g: string) => `messages/groups/${g}`,
-      media: (g: string, t?: string) =>
-        `messages/groups/${g}/media${t ? `?text_content=${encodeURIComponent(t)}` : ""}`,
-    },
   },
   groups: {
     list: "groups",
@@ -104,7 +111,7 @@ export const endpoints = {
     create: "stories",
     byId: (s: string) => `stories/${s}`,
     delete: (s: string) => `stories/${s}`,
-    upload: (type = "Point", coords?: [number, number]) =>
+    upload: (type: string = "Point", coords?: [number, number]) =>
       `stories/media?type=${type}${coords ? `&coordinates=[${coords[0]},${coords[1]}]` : ""}`,
   },
   location: {
@@ -113,4 +120,65 @@ export const endpoints = {
       `location/nearby/users?longitude=${lon}&latitude=${lat}&radius=${r}&limit=${l}`,
   },
 };
-export const API_ENDPOINTS = endpoints;
+
+// — Extension avec alias MAJUSCULES et méthodes manquantes —
+const extendedEndpoints = {
+  ...endpoints,
+
+  // Users
+  USERS: {
+    ...endpoints.users,
+    LIST: endpoints.users.list,
+    ME: endpoints.users.me,
+    BY_ID: endpoints.users.byId,
+  },
+
+  // Messages
+  MESSAGES: {
+    ...endpoints.messages,
+    DIRECT: endpoints.messages.direct,
+    SEND: endpoints.messages.send,
+    MEDIA: endpoints.messages.media,
+    GROUP: (groupId: string) => `groups/${groupId}/messages`,
+  },
+
+  // Groups
+  GROUPS: {
+    ...endpoints.groups,
+    LIST: endpoints.groups.list,
+    BY_ID: endpoints.groups.byId,
+    CREATE: endpoints.groups.create,
+    UPDATE: endpoints.groups.update,
+    ADD_MEMBERS: endpoints.groups.addMembers,
+    REMOVE_MEMBER: endpoints.groups.removeMember,
+    DELETE: endpoints.groups.delete,
+  },
+
+  // Stories (+ LIKE / UNLIKE)
+  STORIES: {
+    ...endpoints.stories,
+    LIST: endpoints.stories.list,
+    NEARBY: endpoints.stories.nearby,
+    CREATE: endpoints.stories.create,
+    BY_ID: endpoints.stories.byId,
+    DELETE: endpoints.stories.delete,
+    UPLOAD: endpoints.stories.upload,
+    LIKE: (id: string) => `stories/${id}/like`,
+    UNLIKE: (id: string) => `stories/${id}/unlike`,
+  },
+
+  // Location
+  LOCATION: {
+    UPDATE: endpoints.location.update,
+    NEARBY_USERS: endpoints.location.nearbyUsers,
+    PRIVACY: "location/privacy",
+  },
+
+  // Media (pour storage.service.ts)
+  MEDIA: {
+    BY_ID: (id: string) => `media/${id}`,
+    UPLOAD: "media",
+  },
+};
+
+export const API_ENDPOINTS = extendedEndpoints;

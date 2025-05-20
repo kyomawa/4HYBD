@@ -1,14 +1,10 @@
-import { logger } from './logger.service';
-import { toast } from '../utils/toast';
+import { logger } from "./logger.service";
+import { toast } from "../utils/toast";
 
 export class AppError extends Error {
-  constructor(
-    message: string,
-    public code: string,
-    public severity: 'error' | 'warning' | 'info' = 'error'
-  ) {
+  constructor(message: string, public code: string, public severity: "error" | "warning" | "info" = "error") {
     super(message);
-    this.name = 'AppError';
+    this.name = "AppError";
   }
 }
 
@@ -44,11 +40,11 @@ class ErrorService {
 
   handleError(error: Error | unknown) {
     const appError = this.normalizeError(error);
-    
+
     // Log l'erreur
     logger.error(`[${appError.code}] ${appError.message}`, {
       error: appError,
-      stack: appError.stack
+      stack: appError.stack,
     });
 
     // Vérifier si un handler spécifique existe
@@ -68,18 +64,10 @@ class ErrorService {
     }
 
     if (error instanceof Error) {
-      return new AppError(
-        error.message,
-        'UNKNOWN_ERROR',
-        'error'
-      );
+      return new AppError(error.message, "UNKNOWN_ERROR", "error");
     }
 
-    return new AppError(
-      'Une erreur inconnue est survenue',
-      'UNKNOWN_ERROR',
-      'error'
-    );
+    return new AppError("Une erreur inconnue est survenue", "UNKNOWN_ERROR", "error");
   }
 
   private defaultErrorHandler(error: AppError) {
@@ -87,7 +75,7 @@ class ErrorService {
     toast({
       message: error.message,
       duration: 3000,
-      color: error.severity === 'error' ? 'danger' : 'warning'
+      color: error.severity === "error" ? "danger" : "warning",
     });
   }
 }
@@ -96,10 +84,10 @@ export const errorService = ErrorService.getInstance();
 
 // Codes d'erreur prédéfinis
 export const ErrorCodes = {
-  NETWORK_ERROR: 'NETWORK_ERROR',
-  AUTH_ERROR: 'AUTH_ERROR',
-  VALIDATION_ERROR: 'VALIDATION_ERROR',
-  CAMERA_ERROR: 'CAMERA_ERROR',
-  STORAGE_ERROR: 'STORAGE_ERROR',
-  UNKNOWN_ERROR: 'UNKNOWN_ERROR'
-} as const; 
+  NETWORK_ERROR: "NETWORK_ERROR",
+  AUTH_ERROR: "AUTH_ERROR",
+  VALIDATION_ERROR: "VALIDATION_ERROR",
+  CAMERA_ERROR: "CAMERA_ERROR",
+  STORAGE_ERROR: "STORAGE_ERROR",
+  UNKNOWN_ERROR: "UNKNOWN_ERROR",
+} as const;
