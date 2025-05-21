@@ -1,93 +1,205 @@
-import React, { useState } from "react";
-import { IonIcon, IonAvatar, IonModal, IonContent, IonHeader, IonToolbar, IonButton, IonTitle } from "@ionic/react";
-import { add, close } from "ionicons/icons";
+import React, { useState, useEffect } from "react";
+import {
+  IonAvatar,
+  IonIcon,
+  IonText,
+  IonBadge,
+  IonGrid,
+  IonRow,
+  IonCol,
+  IonCard,
+  IonCardHeader,
+  IonCardContent,
+  IonCardSubtitle,
+  IonItem,
+  IonLabel,
+  IonButton,
+  IonSpinner,
+} from "@ionic/react";
+import {
+  personOutline,
+  timeOutline,
+  locationOutline,
+  eyeOutline,
+  heartOutline,
+  chatbubbleOutline,
+  heart,
+} from "ionicons/icons";
+import { StoryWithUser } from "../services/story.service";
+import { useAuthContext } from "../contexts/AuthContext";
 import "./StoryCircles.css";
 
-// Interface pour les données de story
-interface StoryUser {
-  id: string;
-  username: string;
-  profilePicture?: string | null;
-  hasUnseenStory?: boolean;
-}
-
 interface StoryCirclesProps {
-  users?: StoryUser[];
-  onAddStory?: () => void;
-  onViewStory?: (userId: string) => void;
+  stories: StoryWithUser[];
+  onStorySelect: (story: StoryWithUser) => void;
 }
 
-/**
- * Composant pour afficher les cercles de stories en haut du feed
- * Incluant un bouton "+" pour créer une nouvelle story
- */
-const StoryCircles: React.FC<StoryCirclesProps> = ({ users = [], onAddStory = () => {}, onViewStory = () => {} }) => {
-  const [selectedUser, setSelectedUser] = useState<StoryUser | null>(null);
-  const [showStoryModal, setShowStoryModal] = useState<boolean>(false);
-
-  // Gestion du clic sur un cercle de story
-  const handleStoryClick = (user: StoryUser) => {
-    setSelectedUser(user);
-    setShowStoryModal(true);
-    onViewStory(user.id);
+const StoryCircles: React.FC<StoryCirclesProps> = ({ stories, onStorySelect }) => {
+  const { user: currentUser } = useAuthContext();
+  
+  // Group stories by user
+  const groupedStories = React.useMemo(() => {
+    const grouped: Record<string, StoryWithUser[]> = {};
+    
+    stories.forEach(story => {
+      if (!grouped[story.userId]) {
+        grouped[story.userId] = [];
+      }
+      grouped[story.userId].push(story);
+    });
+    
+    // For each user, sort their stories by creation time (newest first)
+    Object.keys(grouped).forEach(userId => {
+      grouped[userId].sort((a, b) => b.createdAt - a.createdAt);
+    });
+    
+    return grouped;
+  }, [stories]);
+  
+  // Get user story circles - one circle per user with their latest story
+  const userStoryCircles = React.useMemo(() => {
+    return Object.values(groupedStories).map(userStories => {
+      // Get the most recent story for the user
+      const latestStory = userStories[0];
+      // Count how many stories this user has
+      const storyCount = userStories.length;
+      // Check if user has any unviewed stories
+      const hasUnviewedStories = userStories.some(story => !story.viewed);
+      
+      return {
+        userId: latestStory.userId,
+        username: latestStory.user.username,
+        profilePicture: latestStory.user.profilePicture,
+        latestStory,
+        storyCount,
+        hasUnviewedStories,
+      };
+    });
+  }, [groupedStories]);
+  
+  // Calculate time since story creation
+  const formatTimeSince = (timestamp: number): string => {
+    const now = Date.now();
+    const diffSeconds = Math.floor((now - timestamp) / 1000);
+    
+    if (diffSeconds < 60) {
+      return `${diffSeconds}s`;
+    }
+    
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    if (diffMinutes < 60) {
+      return `${diffMinutes}m`;
+    }
+    
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) {
+      return `${diffHours}h`;
+    }
+    
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d`;
   };
-
-  // Fermeture du modal de story
-  const closeStoryModal = () => {
-    setShowStoryModal(false);
-    setSelectedUser(null);
-  };
-
+  
   return (
-    <>
-      <div className="story-circles-container">
-        {/* Bouton d'ajout de story */}
-        <div className="story-item">
-          <div className="story-add-button" onClick={onAddStory}>
-            <IonIcon icon={add} />
-          </div>
-          <div className="story-name">Votre story</div>
-        </div>
-
-        {/* Cercles des stories des autres utilisateurs */}
-        {users.map((user) => (
-          <div className="story-item" key={user.id} onClick={() => handleStoryClick(user)}>
-            <div className={`story-circle ${user.hasUnseenStory ? "unseen" : "seen"}`}>
-              {user.profilePicture ? (
-                <IonAvatar>
-                  <img src={user.profilePicture} alt={user.username} />
-                </IonAvatar>
-              ) : (
-                <div className="avatar-placeholder">{user.username.charAt(0).toUpperCase()}</div>
+    <div className="story-circles-container">
+      {/* Horizontal scrollable story circles */}
+      <div className="story-circles-scrollable">
+        {userStoryCircles.map(({ userId, username, profilePicture, latestStory, storyCount, hasUnviewedStories }) => (
+          <div key={userId} className="story-circle-item" onClick={() => onStorySelect(latestStory)}>
+            <div className={`story-avatar-border ${hasUnviewedStories ? 'unviewed' : 'viewed'}`}>
+              <IonAvatar className="story-avatar">
+                {profilePicture ? (
+                  <img src={profilePicture} alt={username} />
+                ) : (
+                  <div className="default-avatar">
+                    <IonIcon icon={personOutline} />
+                  </div>
+                )}
+              </IonAvatar>
+              {storyCount > 1 && (
+                <IonBadge className="story-count-badge" color={hasUnviewedStories ? "primary" : "medium"}>
+                  {storyCount}
+                </IonBadge>
               )}
             </div>
-            <div className="story-name">{user.username}</div>
+            <IonText className="story-username">
+              <p>{username}</p>
+            </IonText>
           </div>
         ))}
       </div>
-
-      {/* Modal pour afficher une story */}
-      <IonModal isOpen={showStoryModal} onDidDismiss={closeStoryModal} className="story-modal">
-        {selectedUser && (
-          <>
-            <IonHeader>
-              <IonToolbar>
-                <IonTitle>{selectedUser.username}</IonTitle>
-                <IonButton slot="end" fill="clear" onClick={closeStoryModal}>
-                  <IonIcon icon={close} />
-                </IonButton>
-              </IonToolbar>
-            </IonHeader>
-            <IonContent className="story-content">
-              <div className="story-view-placeholder">
-                <h2>Story de {selectedUser.username}</h2>
-                <p>Contenu de la story à implémenter...</p>
-              </div>
-            </IonContent>
-          </>
-        )}
-      </IonModal>
-    </>
+      
+      {/* Story cards (larger previews) */}
+      <div className="story-cards-container">
+        <IonGrid>
+          <IonRow>
+            {stories.map((story) => (
+              <IonCol size="12" sizeMd="6" key={story.id}>
+                <IonCard className="story-card" onClick={() => onStorySelect(story)}>
+                  <IonCardHeader>
+                    <IonItem lines="none" className="story-card-user">
+                      <IonAvatar slot="start">
+                        {story.user.profilePicture ? (
+                          <img src={story.user.profilePicture} alt={story.user.username} />
+                        ) : (
+                          <div className="default-avatar">
+                            <IonIcon icon={personOutline} />
+                          </div>
+                        )}
+                      </IonAvatar>
+                      <IonLabel>
+                        <h2>{story.user.username}</h2>
+                        <p className="story-time">
+                          <IonIcon icon={timeOutline} />
+                          {formatTimeSince(story.createdAt)} ago
+                        </p>
+                      </IonLabel>
+                      {!story.viewed ? (
+                        <IonBadge color="primary" slot="end">New</IonBadge>
+                      ) : null}
+                    </IonItem>
+                  </IonCardHeader>
+                  
+                  <div className="story-card-image-container">
+                    <img 
+                      src={story.mediaUrl} 
+                      alt="Story" 
+                      className="story-card-image"
+                      onError={(e) => {
+                        // Handle image loading error
+                        (e.target as HTMLImageElement).src = 'assets/image-placeholder.png';
+                      }} 
+                    />
+                    
+                    <div className="story-card-overlay">
+                      <div className="story-card-stats">
+                        <div className="story-stat">
+                          <IonIcon icon={eyeOutline} />
+                          <span>{story.views.length}</span>
+                        </div>
+                        
+                        {story.location && (
+                          <div className="story-location">
+                            <IonIcon icon={locationOutline} />
+                            <span>{story.locationName || "Nearby"}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {story.caption && (
+                    <IonCardContent>
+                      <p className="story-caption">{story.caption}</p>
+                    </IonCardContent>
+                  )}
+                </IonCard>
+              </IonCol>
+            ))}
+          </IonRow>
+        </IonGrid>
+      </div>
+    </div>
   );
 };
 

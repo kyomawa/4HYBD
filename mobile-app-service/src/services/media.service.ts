@@ -1,29 +1,30 @@
 import { getAuthToken } from "./auth.service";
 import { Preferences } from "@capacitor/preferences";
-import { API_URL } from "../config";
+import { API_URL, API_ENDPOINTS } from "../config";
 
-// Clés pour le stockage en cache
+// Keys for storage
 const MEDIA_CACHE_KEY = "media_cache";
 const PENDING_UPLOADS_KEY = "pending_media_uploads";
+const PENDING_DELETIONS_KEY = "pending_media_deletions";
 
 /**
- * Interface représentant un média dans l'application
+ * Interface representing media in the application
  */
 export interface Media {
   id: string;
   type: "image" | "video";
   url: string;
   thumbnailUrl?: string;
-  duration?: number; // Pour les vidéos (en secondes)
-  size: number; // En octets
+  duration?: number; // For videos (in seconds)
+  size: number; // In bytes
   createdAt: number;
   userId: string;
-  local?: boolean; // Indique si le média est stocké localement (non synchronisé)
-  localPath?: string; // Chemin local du fichier en attendant la synchronisation
+  local?: boolean; // Indicates if the media is stored locally (not synced)
+  localPath?: string; // Local path of the file waiting for sync
 }
 
 /**
- * Interface pour un média en attente d'upload
+ * Interface for a pending upload
  */
 interface PendingUpload {
   id: string;
@@ -33,43 +34,45 @@ interface PendingUpload {
 }
 
 /**
- * Vérifie si l'appareil est actuellement en ligne
+ * Checks if the device is currently online
  */
 const isOnline = (): boolean => {
   return navigator.onLine;
 };
 
 /**
- * Télécharge un média vers le backend
- * @param path Chemin ou URI du média à télécharger
- * @param type Type du média (image ou vidéo)
- * @returns ID du média téléchargé
+ * Uploads media to the backend
+ * @param path Path or URI of the media to upload
+ * @param type Type of media (image or video)
+ * @returns ID of the uploaded media
  */
 export const uploadMedia = async (path: string, type: "image" | "video"): Promise<string> => {
-  // Si on est en ligne, on essaie d'uploader directement
+  // If online, try to upload directly
   if (isOnline()) {
     try {
       const token = await getAuthToken();
+      
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
 
-      // Convertir le chemin en Blob si c'est une URL web
-      let mediaBlob;
+      // Convert path to Blob if it's a web URL
+      let mediaBlob: Blob;
       if (path.startsWith("http") || path.startsWith("blob:")) {
         const response = await fetch(path);
         mediaBlob = await response.blob();
       } else {
-        // Pour les chemins natifs, on devrait utiliser des plugins spéciaux
-        // comme Capacitor FileSystem pour lire les fichiers natifs
-        // Cette partie sera à adapter selon l'environnement
-        // Pour l'instant, on fait un fetch simple qui fonctionnera pour les URLs web
+        // For native paths, we would normally use plugins like Capacitor FileSystem
+        // For now, a simple fetch which will work for web URLs
         const response = await fetch(path);
         mediaBlob = await response.blob();
       }
 
       const formData = new FormData();
       formData.append("file", mediaBlob, `media.${type === "image" ? "jpg" : "mp4"}`);
-      formData.append("type", type);
 
-      const response = await fetch(`${API_URL}/api/media/upload`, {
+      // Upload to the API
+      const response = await fetch(`${API_URL}${API_ENDPOINTS.MEDIA.UPLOAD}`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -78,12 +81,13 @@ export const uploadMedia = async (path: string, type: "image" | "video"): Promis
       });
 
       if (!response.ok) {
-        throw new Error("Failed to upload media");
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to upload media");
       }
 
       const data = await response.json();
 
-      // Stocker le média dans le cache pour référence locale
+      // Store the media in cache for local reference
       await cacheMedia({
         id: data.id,
         type: data.type,
@@ -95,27 +99,27 @@ export const uploadMedia = async (path: string, type: "image" | "video"): Promis
         userId: data.user_id,
       });
 
-      return data.id;
+      return data.url; // Return the URL of the uploaded media
     } catch (error) {
       console.error("Error uploading media:", error);
 
-      // En cas d'erreur, on stocke le média en attente pour upload ultérieur
+      // In case of error, store the media for later upload
       await addPendingUpload(path, type);
 
-      // Générer un ID temporaire pour usage local
-      return `temp_${Date.now()}`;
+      // Generate a temporary URL for local use
+      return path;
     }
   } else {
-    // Si on est hors ligne, on stocke le média en attente
+    // If offline, store the media for later upload
     await addPendingUpload(path, type);
 
-    // Générer un ID temporaire pour usage local
-    return `temp_${Date.now()}`;
+    // Return the local path as URL for now
+    return path;
   }
 };
 
 /**
- * Ajoute un média à la liste des uploads en attente
+ * Adds media to the list of pending uploads
  */
 const addPendingUpload = async (path: string, type: "image" | "video"): Promise<void> => {
   try {
@@ -142,8 +146,8 @@ const addPendingUpload = async (path: string, type: "image" | "video"): Promise<
 };
 
 /**
- * Synchronise les médias en attente avec le backend
- * À appeler quand l'appareil se reconnecte
+ * Synchronizes pending media uploads with the backend
+ * Called when the device comes back online
  */
 export const syncPendingUploads = async (): Promise<void> => {
   if (!isOnline()) return;
@@ -166,7 +170,7 @@ export const syncPendingUploads = async (): Promise<void> => {
       }
     }
 
-    // Supprimer les uploads réussis de la liste
+    // Remove successful uploads from pending
     if (successfulUploads.length > 0) {
       const remainingUploads = pendingUploads.filter((upload) => !successfulUploads.includes(upload.id));
 
@@ -181,7 +185,7 @@ export const syncPendingUploads = async (): Promise<void> => {
 };
 
 /**
- * Stocke un média dans le cache local
+ * Stores a media in the local cache
  */
 const cacheMedia = async (media: Media): Promise<void> => {
   try {
@@ -200,13 +204,13 @@ const cacheMedia = async (media: Media): Promise<void> => {
 };
 
 /**
- * Récupère un média depuis le cache ou le backend
- * @param mediaId ID du média à récupérer
- * @returns Données du média
+ * Retrieves media from the cache or backend
+ * @param mediaId ID of the media to retrieve
+ * @returns Media data or null if not found
  */
 export const getMedia = async (mediaId: string): Promise<Media | null> => {
   try {
-    // Vérifier d'abord dans le cache local
+    // First check local cache
     const result = await Preferences.get({ key: MEDIA_CACHE_KEY });
     const cachedMedia = result.value ? JSON.parse(result.value) : {};
 
@@ -214,11 +218,16 @@ export const getMedia = async (mediaId: string): Promise<Media | null> => {
       return cachedMedia[mediaId];
     }
 
-    // Si le média n'est pas en cache et qu'on est en ligne, essayer de le récupérer du backend
+    // If not in cache and online, try to retrieve from backend
     if (isOnline()) {
       try {
         const token = await getAuthToken();
-        const response = await fetch(`${API_URL}/api/media/${mediaId}`, {
+        
+        if (!token) {
+          throw new Error("Not authenticated");
+        }
+
+        const response = await fetch(`${API_URL}${API_ENDPOINTS.MEDIA.BY_ID(mediaId)}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -241,7 +250,7 @@ export const getMedia = async (mediaId: string): Promise<Media | null> => {
           userId: data.user_id,
         };
 
-        // Mettre en cache pour les prochaines utilisations
+        // Cache for future use
         await cacheMedia(media);
 
         return media;
@@ -251,7 +260,7 @@ export const getMedia = async (mediaId: string): Promise<Media | null> => {
       }
     }
 
-    // Si on est hors ligne et que le média n'est pas en cache, on ne peut pas le récupérer
+    // If offline and not in cache, we can't retrieve it
     return null;
   } catch (error) {
     console.error(`Error getting media ${mediaId}:`, error);
@@ -260,17 +269,22 @@ export const getMedia = async (mediaId: string): Promise<Media | null> => {
 };
 
 /**
- * Supprime un média du backend
- * @param mediaId ID du média à supprimer
- * @returns Statut de suppression
+ * Deletes media from the backend
+ * @param mediaId ID of the media to delete
+ * @returns Status of the deletion
  */
 export const deleteMedia = async (mediaId: string): Promise<boolean> => {
   try {
-    // Si on est en ligne, essayer de supprimer du backend
+    // If online, try to delete from backend
     if (isOnline()) {
       try {
         const token = await getAuthToken();
-        const response = await fetch(`${API_URL}/api/media/${mediaId}`, {
+        
+        if (!token) {
+          throw new Error("Not authenticated");
+        }
+
+        const response = await fetch(`${API_URL}${API_ENDPOINTS.MEDIA.BY_ID(mediaId)}`, {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -278,24 +292,24 @@ export const deleteMedia = async (mediaId: string): Promise<boolean> => {
         });
 
         if (response.ok) {
-          // Supprimer également du cache local
+          // Also remove from local cache
           await removeFromCache(mediaId);
           return true;
         }
 
-        // Si l'API a échoué, on essaie quand même de supprimer localement
+        // If API failed, still try to remove locally
         await removeFromCache(mediaId);
         return false;
       } catch (error) {
         console.error(`Error deleting media ${mediaId}:`, error);
-        // En cas d'erreur, supprimer du cache local quand même
+        // In case of error, remove from local cache anyway
         await removeFromCache(mediaId);
         return false;
       }
     } else {
-      // Si on est hors ligne, on supprime seulement du cache local
+      // If offline, remove from local cache
       await removeFromCache(mediaId);
-      // Marquer pour suppression ultérieure quand on sera en ligne
+      // Mark for deletion when back online
       await markForDeletion(mediaId);
       return true;
     }
@@ -306,7 +320,7 @@ export const deleteMedia = async (mediaId: string): Promise<boolean> => {
 };
 
 /**
- * Supprime un média du cache local
+ * Removes media from local cache
  */
 const removeFromCache = async (mediaId: string): Promise<void> => {
   try {
@@ -329,12 +343,10 @@ const removeFromCache = async (mediaId: string): Promise<void> => {
 };
 
 /**
- * Marque un média pour suppression ultérieure quand on sera en ligne
+ * Marks media for deletion when back online
  */
 const markForDeletion = async (mediaId: string): Promise<void> => {
   try {
-    const PENDING_DELETIONS_KEY = "pending_media_deletions";
-
     const result = await Preferences.get({ key: PENDING_DELETIONS_KEY });
     const pendingDeletions = result.value ? JSON.parse(result.value) : [];
 
@@ -352,15 +364,13 @@ const markForDeletion = async (mediaId: string): Promise<void> => {
 };
 
 /**
- * Synchronise les suppressions de médias en attente avec le backend
- * À appeler quand l'appareil se reconnecte
+ * Synchronizes pending media deletions with the backend
+ * Called when the device comes back online
  */
 export const syncPendingDeletions = async (): Promise<void> => {
   if (!isOnline()) return;
 
   try {
-    const PENDING_DELETIONS_KEY = "pending_media_deletions";
-
     const result = await Preferences.get({ key: PENDING_DELETIONS_KEY });
     if (!result.value) return;
 
@@ -372,7 +382,12 @@ export const syncPendingDeletions = async (): Promise<void> => {
     for (const mediaId of pendingDeletions) {
       try {
         const token = await getAuthToken();
-        const response = await fetch(`${API_URL}/api/media/${mediaId}`, {
+        
+        if (!token) {
+          throw new Error("Not authenticated");
+        }
+
+        const response = await fetch(`${API_URL}${API_ENDPOINTS.MEDIA.BY_ID(mediaId)}`, {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -387,7 +402,7 @@ export const syncPendingDeletions = async (): Promise<void> => {
       }
     }
 
-    // Supprimer les suppressions réussies de la liste
+    // Remove successful deletions from pending
     if (successfulDeletions.length > 0) {
       const remainingDeletions = pendingDeletions.filter((mediaId) => !successfulDeletions.includes(mediaId));
 
@@ -402,9 +417,95 @@ export const syncPendingDeletions = async (): Promise<void> => {
 };
 
 /**
- * Met en place les écouteurs d'événements pour la connectivité réseau
+ * Helper function to extract media ID from URL
+ * @param url Media URL
+ * @returns Media ID or null if not found
  */
-export const setupConnectivityListeners = (): void => {
+export const extractMediaIdFromUrl = (url: string): string | null => {
+  // Example pattern: http://localhost:9000/snapshoot-media/media_12345.jpg
+  try {
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split("/");
+    const filename = pathParts[pathParts.length - 1];
+
+    // Try to extract ID from filename
+    const match = filename.match(/([a-zA-Z0-9-_]+)\.[a-zA-Z0-9]+/);
+    if (match && match[1]) {
+      return match[1];
+    }
+
+    // Fallback: return the whole filename minus the extension
+    return filename.split(".")[0];
+  } catch (error) {
+    console.error("Error extracting media ID:", error);
+    return null;
+  }
+};
+
+/**
+ * Helper to convert a data URL to a Blob
+ * @param dataUrl Data URL to convert
+ * @returns Blob object
+ */
+export const dataUrlToBlob = (dataUrl: string): Blob => {
+  const arr = dataUrl.split(",");
+  const mime = arr[0].match(/:(.*?);/)![1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+
+  return new Blob([u8arr], { type: mime });
+};
+
+/**
+ * Gets all cached media
+ * @returns Object with media IDs as keys and media objects as values
+ */
+export const getAllCachedMedia = async (): Promise<Record<string, Media>> => {
+  try {
+    const result = await Preferences.get({ key: MEDIA_CACHE_KEY });
+    return result.value ? JSON.parse(result.value) : {};
+  } catch (error) {
+    console.error("Error getting all cached media:", error);
+    return {};
+  }
+};
+
+/**
+ * Clears the media cache
+ */
+export const clearMediaCache = async (): Promise<void> => {
+  try {
+    await Preferences.remove({ key: MEDIA_CACHE_KEY });
+  } catch (error) {
+    console.error("Error clearing media cache:", error);
+  }
+};
+
+/**
+ * Checks if a media ID exists in the cache
+ * @param mediaId Media ID to check
+ * @returns True if the media exists in cache, false otherwise
+ */
+export const mediaExistsInCache = async (mediaId: string): Promise<boolean> => {
+  try {
+    const result = await Preferences.get({ key: MEDIA_CACHE_KEY });
+    const cachedMedia = result.value ? JSON.parse(result.value) : {};
+    return !!cachedMedia[mediaId];
+  } catch (error) {
+    console.error(`Error checking if media ${mediaId} exists in cache:`, error);
+    return false;
+  }
+};
+
+/**
+ * Set up event listeners for connectivity changes
+ */
+const setupConnectivityListeners = (): void => {
   window.addEventListener("online", async () => {
     console.log("Online: syncing media uploads and deletions...");
     await syncPendingUploads();
@@ -412,5 +513,5 @@ export const setupConnectivityListeners = (): void => {
   });
 };
 
-// Initialiser les écouteurs de connectivité au démarrage
+// Initialize connectivity listeners
 setupConnectivityListeners();
