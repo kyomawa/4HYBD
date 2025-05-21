@@ -22,13 +22,17 @@ export enum AppMode {
 export const DEFAULT_APP_MODE = AppMode.HYBRID;
 
 // Generic fetch wrapper and types
-export type FetchOptions = {
+export interface FetchOptions {
   method?: string;
   headers?: Record<string, string>;
   body?: any;
-};
+  query?: Record<string, string | number | boolean>;
+}
+
 export async function fetchApi<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
-  const url = `${API_URL}${endpoint}`;
+  // Assurer qu'il n'y a pas de slash au début de l'endpoint
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint.slice(1) : endpoint;
+  const url = `${API_URL}/${cleanEndpoint}`;
   const token = localStorage.getItem("token");
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -70,115 +74,100 @@ export function login(payload: LoginPayload): Promise<LoginResponse> {
   });
 }
 
-// Centralized endpoints, no leading slashes
-export const endpoints = {
+// Types pour les endpoints
+export interface ApiEndpoints {
   auth: {
-    register: "auth/register",
+    login: string;
+    register: string;
+    logout: string;
+    refresh: string;
+    me: string;
+  };
+  users: {
+    byId: (id: string) => string;
+    update: string;
+    delete: string;
+    search: string;
+    follow: (id: string) => string;
+    unfollow: (id: string) => string;
+  };
+  stories: {
+    create: string;
+    byId: (id: string) => string;
+    byUser: (userId: string) => string;
+    feed: string;
+    nearby: string;
+    delete: (id: string) => string;
+    media: string;
+    view: (id: string) => string;
+    like: (id: string) => string;
+    unlike: (id: string) => string;
+  };
+  chat: {
+    conversations: string;
+    messages: (conversationId: string) => string;
+    send: (conversationId: string) => string;
+    create: string;
+    addUser: (conversationId: string) => string;
+    removeUser: (conversationId: string, userId: string) => string;
+    leave: (conversationId: string) => string;
+  };
+  location: {
+    update: string;
+    nearby: string;
+    status: string;
+  };
+  media: {
+    upload: string;
+    delete: (id: string) => string;
+  };
+}
+
+// Endpoints de l'API
+export const API_ENDPOINTS = {
+  auth: {
     login: "auth/login",
+    register: "auth/register",
+    logout: "auth/logout",
+    refresh: "auth/refresh",
     me: "auth/me",
   },
   users: {
-    list: "users",
-    me: "users/me",
     byId: (id: string) => `users/${id}`,
-  },
-  friends: {
-    list: "friends",
-    requests: "friends/requests",
-    find: "friends/find",
-    send: (id: string) => `friends/request/${id}`,
-    accept: (id: string) => `friends/accept/${id}`,
-    remove: (id: string) => `friends/${id}`,
-  },
-  messages: {
-    direct: (id: string) => `messages/${id}`,
-    send: (id: string) => `messages/${id}`,
-    media: (id: string, text?: string) =>
-      `messages/${id}/media${text ? `?text_content=${encodeURIComponent(text)}` : ""}`,
-  },
-  groups: {
-    list: "groups",
-    byId: (g: string) => `groups/${g}`,
-    create: "groups",
-    update: (g: string) => `groups/${g}`,
-    addMembers: (g: string) => `groups/${g}/members`,
-    removeMember: (g: string, u: string) => `groups/${g}/members/${u}`,
-    delete: (g: string) => `groups/${g}`,
+    update: "users/update",
+    delete: "users/delete",
+    search: "users/search",
+    follow: (id: string) => `users/${id}/follow`,
+    unfollow: (id: string) => `users/${id}/unfollow`,
   },
   stories: {
-    list: "stories",
+    create: "stories/create",
+    byId: (id: string) => `stories/${id}`,
+    byUser: (userId: string) => `stories/user/${userId}`,
+    feed: "stories/feed",
     nearby: "stories/nearby",
-    create: "stories",
-    byId: (s: string) => `stories/${s}`,
-    delete: (s: string) => `stories/${s}`,
-    upload: (type: string = "Point", coords?: [number, number]) =>
-      `stories/media?type=${type}${coords ? `&coordinates=[${coords[0]},${coords[1]}]` : ""}`,
+    delete: (id: string) => `stories/${id}`,
+    media: (id: string) => `stories/${id}/media`,
+    view: (id: string) => `stories/${id}/view`,
+    like: (id: string) => `stories/${id}/like`,
+    unlike: (id: string) => `stories/${id}/unlike`,
+  },
+  chat: {
+    conversations: "chat/conversations",
+    messages: (conversationId: string) => `chat/conversations/${conversationId}/messages`,
+    send: "chat/messages/send",
+    create: "chat/conversations/create",
+    addUser: (conversationId: string) => `chat/conversations/${conversationId}/add-user`,
+    removeUser: (conversationId: string) => `chat/conversations/${conversationId}/remove-user`,
+    leave: (conversationId: string) => `chat/conversations/${conversationId}/leave`,
   },
   location: {
     update: "location/update",
-    nearbyUsers: (lon: number, lat: number, r = 5000, l = 50) =>
-      `location/nearby/users?longitude=${lon}&latitude=${lat}&radius=${r}&limit=${l}`,
+    nearby: "location/nearby",
+    status: "location/status",
   },
-};
-
-// — Extension avec alias MAJUSCULES et méthodes manquantes —
-const extendedEndpoints = {
-  ...endpoints,
-
-  // Users
-  USERS: {
-    ...endpoints.users,
-    LIST: endpoints.users.list,
-    ME: endpoints.users.me,
-    BY_ID: endpoints.users.byId,
+  media: {
+    upload: "media/upload",
+    delete: (id: string) => `media/${id}`,
   },
-
-  // Messages
-  MESSAGES: {
-    ...endpoints.messages,
-    DIRECT: endpoints.messages.direct,
-    SEND: endpoints.messages.send,
-    MEDIA: endpoints.messages.media,
-    GROUP: (groupId: string) => `groups/${groupId}/messages`,
-  },
-
-  // Groups
-  GROUPS: {
-    ...endpoints.groups,
-    LIST: endpoints.groups.list,
-    BY_ID: endpoints.groups.byId,
-    CREATE: endpoints.groups.create,
-    UPDATE: endpoints.groups.update,
-    ADD_MEMBERS: endpoints.groups.addMembers,
-    REMOVE_MEMBER: endpoints.groups.removeMember,
-    DELETE: endpoints.groups.delete,
-  },
-
-  // Stories (+ LIKE / UNLIKE)
-  STORIES: {
-    ...endpoints.stories,
-    LIST: endpoints.stories.list,
-    NEARBY: endpoints.stories.nearby,
-    CREATE: endpoints.stories.create,
-    BY_ID: endpoints.stories.byId,
-    DELETE: endpoints.stories.delete,
-    UPLOAD: endpoints.stories.upload,
-    LIKE: (id: string) => `stories/${id}/like`,
-    UNLIKE: (id: string) => `stories/${id}/unlike`,
-  },
-
-  // Location
-  LOCATION: {
-    UPDATE: endpoints.location.update,
-    NEARBY_USERS: endpoints.location.nearbyUsers,
-    PRIVACY: "location/privacy",
-  },
-
-  // Media (pour storage.service.ts)
-  MEDIA: {
-    BY_ID: (id: string) => `media/${id}`,
-    UPLOAD: "media",
-  },
-};
-
-export const API_ENDPOINTS = extendedEndpoints;
+} as const;

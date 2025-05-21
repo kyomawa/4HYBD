@@ -1,119 +1,196 @@
 .story-circles-container {
   display: flex;
-  padding: 8px 16px;
+  flex-direction: column;
+  width: 100%;
+}
+
+.story-circles-scrollable {
+  display: flex;
   overflow-x: auto;
-  background-color: var(--ion-background-color);
-  margin-top: 10px;
-  /* Masquer la barre de défilement mais permettre le défilement */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
+  padding: 12px 8px;
+  background-color: var(--beunreal-surface);
+  border-bottom: 1px solid var(--beunreal-border);
+  -webkit-overflow-scrolling: touch; /* For smooth scrolling on iOS */
+  scrollbar-width: none; /* Hide scrollbar for Firefox */
 }
 
-/* Masquer la barre de défilement pour Chrome, Safari et Opera */
-.story-circles-container::-webkit-scrollbar {
-  display: none;
+.story-circles-scrollable::-webkit-scrollbar {
+  display: none; /* Hide scrollbar for Chrome/Safari/Edge */
 }
 
-.story-item {
+.story-circle-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-right: 12px;
-  min-width: 60px;
+  margin: 0 8px;
+  cursor: pointer;
+  min-width: 70px;
 }
 
-.story-add-button {
-  width: 60px;
-  height: 60px;
-  min-width: 60px;
+.story-avatar-border {
+  width: 70px;
+  height: 70px;
   border-radius: 50%;
-  border: 2px dashed var(--ion-color-medium);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.1);
-}
-
-.story-add-button ion-icon {
-  font-size: 24px;
-  color: var(--ion-color-medium);
-}
-
-/* Animation au clic */
-.story-add-button:active,
-.story-circle:active {
-  transform: scale(0.95);
-  opacity: 0.8;
-  transition: all 0.2s ease;
-}
-
-/* Style pour les cercles de stories des autres utilisateurs */
-.story-circle {
-  width: 60px;
-  height: 60px;
-  min-width: 60px;
-  border-radius: 50%;
+  padding: 2px;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.story-avatar-border.unviewed {
+  background: linear-gradient(45deg, #3880ff, #56CCF2);
+}
+
+.story-avatar-border.viewed {
+  background: #dedede;
+}
+
+.story-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
   overflow: hidden;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* Style pour les cercles avec stories non vues */
-.story-circle.unseen {
-  border: 2px solid var(--ion-color-primary);
-}
-
-/* Style pour les cercles avec stories déjà vues */
-.story-circle.seen {
-  border: 2px solid var(--ion-color-medium);
-}
-
-.story-circle ion-avatar {
-  width: 100%;
-  height: 100%;
-}
-
-.avatar-placeholder {
+.default-avatar {
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--ion-color-medium);
+  background-color: var(--beunreal-primary);
   color: white;
-  font-size: 24px;
-  font-weight: bold;
+  font-size: 28px;
+  border-radius: 50%;
 }
 
-/* Style pour les noms sous les cercles */
-.story-name {
+.story-count-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  border: 2px solid var(--beunreal-surface);
+}
+
+.story-username {
+  margin-bottom: 6px;
   font-size: 12px;
-  margin-top: 4px;
   text-align: center;
-  max-width: 60px;
+  width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--ion-color-dark);
+  color: var(--beunreal-text);
 }
 
-/* Styles pour le modal de story */
-.story-modal {
-  --border-radius: 0;
-  --width: 100%;
-  --height: 100%;
+.story-username p {
+  margin: 0;
+  color: var(--beunreal-text);
 }
 
-.story-content {
-  --background: #000;
+/* Story Cards */
+.story-cards-container {
+  padding: 12px 8px;
 }
 
-.story-view-placeholder {
+.story-card {
+  margin-bottom: 16px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+.story-card-user {
+  --background: transparent;
+  --padding-start: 0;
+  --inner-padding-end: 0;
+}
+
+.story-time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--beunreal-text-secondary);
+}
+
+.story-card-image-container {
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 100%; /* 1:1 Aspect Ratio */
+  overflow: hidden;
+}
+
+.story-card-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
   height: 100%;
+  object-fit: cover;
+}
+
+.story-card-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, transparent 30%, transparent 70%, rgba(0, 0, 0, 0.4) 100%);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   color: white;
-  text-align: center;
-  padding: 20px;
+  padding: 12px;
+}
+
+.story-card-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  width: 100%;
+}
+
+.story-stat, .story-location {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: rgba(0, 0, 0, 0.5);
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.story-caption {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* Media Queries for larger screens */
+@media (min-width: 768px) {
+  .story-circles-scrollable {
+    padding: 16px 12px;
+  }
+  
+  .story-cards-container {
+    padding: 16px;
+  }
+  
+  .story-card {
+    margin-bottom: 24px;
+  }
 }

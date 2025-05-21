@@ -26,7 +26,6 @@ import { personAdd, checkmark, grid, chevronBack, ellipsisHorizontal, chatbubble
 import { useParams } from "react-router";
 import { useAuthContext } from "../contexts/AuthContext";
 import { getUserById, followUser, unfollowUser, User } from "../services/auth.service";
-import { getPostsByUserId, Post } from "../services/post.service";
 import { getOrCreateConversation } from "../services/chat.service";
 import "./UserProfile.css";
 
@@ -40,11 +39,9 @@ const UserProfile: React.FC = () => {
   const { user: currentUser, refreshUser } = useAuthContext();
 
   const [user, setUser] = useState<User | null>(null);
-  const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
   const [isFollowingLoading, setIsFollowingLoading] = useState<boolean>(false);
-  const [selectedSegment, setSelectedSegment] = useState<string>("posts");
   const [showActionSheet, setShowActionSheet] = useState<boolean>(false);
   const [startingChat, setStartingChat] = useState<boolean>(false);
 
@@ -72,10 +69,6 @@ const UserProfile: React.FC = () => {
       }
 
       setUser(userData);
-
-      // Get user posts
-      const userPosts = await getPostsByUserId(userData.id);
-      setPosts(userPosts);
     } catch (error) {
       console.error("Error loading user data:", error);
     } finally {
@@ -124,12 +117,6 @@ const UserProfile: React.FC = () => {
       console.error("Error starting chat:", error);
     } finally {
       setStartingChat(false);
-    }
-  };
-
-  const handleSegmentChange = (e: SegmentCustomEvent) => {
-    if (e.detail.value) {
-      setSelectedSegment(e.detail.value);
     }
   };
 
@@ -202,19 +189,11 @@ const UserProfile: React.FC = () => {
           <div className="profile-info">
             <div className="profile-avatar-container">
               <IonAvatar className="profile-avatar">
-                {user.profilePicture ? (
-                  <img src={user.profilePicture} alt={user.username} />
-                ) : (
-                  <div className="default-avatar">{user.username.charAt(0).toUpperCase()}</div>
-                )}
+                <div className="default-avatar">{user.username.charAt(0).toUpperCase()}</div>
               </IonAvatar>
             </div>
 
             <div className="profile-stats">
-              <div className="stat-item">
-                <strong>{posts.length}</strong>
-                <span>Posts</span>
-              </div>
               <div className="stat-item">
                 <strong>{user.followers?.length || 0}</strong>
                 <span>Followers</span>
@@ -228,7 +207,6 @@ const UserProfile: React.FC = () => {
 
           <div className="profile-details">
             <h2>{user.username}</h2>
-            {user.fullName && <p className="full-name">{user.fullName}</p>}
             {user.bio && <p className="bio">{user.bio}</p>}
           </div>
 
@@ -264,40 +242,6 @@ const UserProfile: React.FC = () => {
               </>
             )}
           </div>
-        </div>
-
-        <div className="profile-content">
-          <IonSegment value={selectedSegment} onIonChange={handleSegmentChange}>
-            <IonSegmentButton value="posts">
-              <IonIcon icon={grid} />
-            </IonSegmentButton>
-          </IonSegment>
-
-          {selectedSegment === "posts" &&
-            (posts.length > 0 ? (
-              <IonGrid className="posts-grid">
-                <IonRow>
-                  {posts.map((post) => (
-                    <IonCol size="4" key={post.id}>
-                      <div className="post-thumbnail" onClick={() => router.push(`/app/photo/${post.id}`)}>
-                        <img src={post.imageUrl} alt="Post" />
-                        {post.likes.length > 0 && (
-                          <div className="post-likes-indicator">
-                            <span>{post.likes.length}</span>
-                          </div>
-                        )}
-                      </div>
-                    </IonCol>
-                  ))}
-                </IonRow>
-              </IonGrid>
-            ) : (
-              <div className="empty-posts">
-                <IonText color="medium">
-                  <p>No posts yet</p>
-                </IonText>
-              </div>
-            ))}
         </div>
       </IonContent>
 

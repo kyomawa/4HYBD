@@ -17,6 +17,7 @@ pub struct AuthLogin {
 #[derive(Serialize, Deserialize)]
 pub struct AuthResponse {
     pub token: String,
+    pub user: User,
 }
 
 // =============================================================================================================================

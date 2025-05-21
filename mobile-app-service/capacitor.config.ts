@@ -5,7 +5,10 @@ const config: CapacitorConfig = {
   appName: 'BeUnreal',
   webDir: 'dist',
   server: {
-    androidScheme: 'https'
+    androidScheme: 'https',
+    hostname: 'localhost',
+    cleartext: true,
+    allowNavigation: ['localhost', 'localhost:8100', 'localhost:3000']
   },
   plugins: {
     LocalNotifications: {

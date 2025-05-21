@@ -1,28 +1,27 @@
 <!DOCTYPE html>
 <html lang="fr">
   <head>
-    <meta charset="utf-8" />
+    <meta charset="UTF-8" />
     <title>BeUnreal</title>
-    
-    <base href="/" />
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
     <meta name="color-scheme" content="light dark" />
-    <meta
-      name="viewport"
-      content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"
-    />
+    <meta name="theme-color" content="#262626" />
+    <meta name="description" content="BeUnreal - Partagez vos moments en temps réel" />
     <meta name="format-detection" content="telephone=no" />
     <meta name="msapplication-tap-highlight" content="no" />
-    
-    <link rel="manifest" href="/manifest.json" />
-    
-    <link rel="shortcut icon" type="image/png" href="/logo.png" />
-    
-    <!-- add to homescreen for ios -->
+    <link rel="icon" type="image/svg+xml" href="/assets/icon.svg" />
+    <link rel="apple-touch-icon" href="/assets/icon.png" />
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places&callback=initMap"></script>
+    <!-- iOS specific meta tags -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="BeUnreal" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
-    <link rel="apple-touch-icon" href="/logo.png" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- PWA meta tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="BeUnreal" />
+    <meta name="msapplication-starturl" content="/" />
+    <meta name="msapplication-TileColor" content="#262626" />
+    <meta name="msapplication-TileImage" content="/assets/icon.png" />
   </head>
   <body>
     <div id="root"></div>

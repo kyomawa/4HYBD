@@ -7,12 +7,14 @@ import { API_URL, API_ENDPOINTS } from "../config";
 const LOCATION_ENABLED_KEY = "location_enabled";
 const LOCATION_PRIVACY_KEY = "location_privacy";
 const LOCATION_CACHE_KEY = "location_cache";
+const PENDING_LOCATION_UPDATES_KEY = "pending_location_updates";
 
 export interface LocationData {
   latitude: number;
   longitude: number;
   accuracy: number;
   timestamp: number;
+  coordinates: [number, number]; // [longitude, latitude] format
 }
 
 export interface LocationPrivacy {
@@ -21,14 +23,14 @@ export interface LocationPrivacy {
 }
 
 /**
- * Vérifie si l'appareil est actuellement en ligne
+ * Checks if the device is currently online
  */
 const isOnline = (): boolean => {
   return navigator.onLine;
 };
 
 /**
- * Check if location services are enabled
+ * Check if location services are enabled in app settings
  * @returns Promise with boolean indicating if location is enabled
  */
 export const isLocationEnabled = async (): Promise<boolean> => {
@@ -42,7 +44,7 @@ export const isLocationEnabled = async (): Promise<boolean> => {
 };
 
 /**
- * Enable or disable location services
+ * Enable or disable location services in app settings
  * @param enabled Whether location services should be enabled
  */
 export const setLocationEnabled = async (enabled: boolean): Promise<void> => {
@@ -59,7 +61,7 @@ export const setLocationEnabled = async (enabled: boolean): Promise<void> => {
 
 /**
  * Request location permissions from the user
- * @returns Promise with the permission status
+ * @returns Promise with boolean indicating if permissions were granted
  */
 export const requestLocationPermissions = async (): Promise<boolean> => {
   try {
@@ -78,8 +80,8 @@ export const requestLocationPermissions = async (): Promise<boolean> => {
 };
 
 /**
- * Get the current location
- * @returns Promise with the location data
+ * Get the current location of the device
+ * @returns Promise with the location data or null if location could not be determined
  */
 export const getCurrentLocation = async (): Promise<LocationData | null> => {
   try {
@@ -105,11 +107,12 @@ export const getCurrentLocation = async (): Promise<LocationData | null> => {
       timeout: 10000,
     });
 
-    const locationData = {
+    const locationData: LocationData = {
       latitude: position.coords.latitude,
       longitude: position.coords.longitude,
       accuracy: position.coords.accuracy,
       timestamp: position.timestamp,
+      coordinates: [position.coords.longitude, position.coords.latitude]
     };
 
     // Cache the location data
@@ -121,20 +124,26 @@ export const getCurrentLocation = async (): Promise<LocationData | null> => {
         await updateLocationOnServer(locationData);
       } catch (error) {
         console.error("Error updating location on server:", error);
+        // Add to pending updates for later sync
+        await addPendingLocationUpdate(locationData);
       }
+    } else {
+      // Add to pending updates for when we're back online
+      await addPendingLocationUpdate(locationData);
     }
 
     return locationData;
   } catch (error) {
     console.error("Error getting current location:", error);
 
-    // Try to get from cache
-    return await getCachedLocation();
+    // Try to get from cache if current location fetch fails
+    return getCachedLocation();
   }
 };
 
 /**
  * Cache the location data locally
+ * @param location Location data to cache
  */
 const cacheLocation = async (location: LocationData): Promise<void> => {
   try {
@@ -149,6 +158,7 @@ const cacheLocation = async (location: LocationData): Promise<void> => {
 
 /**
  * Get cached location data
+ * @returns Promise with cached location data or null if not found
  */
 const getCachedLocation = async (): Promise<LocationData | null> => {
   try {
@@ -167,6 +177,7 @@ const getCachedLocation = async (): Promise<LocationData | null> => {
 
 /**
  * Update location on the server
+ * @param location Location data to update
  */
 const updateLocationOnServer = async (location: LocationData): Promise<void> => {
   try {
@@ -184,8 +195,8 @@ const updateLocationOnServer = async (location: LocationData): Promise<void> => 
       },
       body: JSON.stringify({
         location: {
-          coordinates: [location.longitude, location.latitude],
           type: "Point",
+          coordinates: [location.longitude, location.latitude],
         },
       }),
     });
@@ -200,7 +211,23 @@ const updateLocationOnServer = async (location: LocationData): Promise<void> => 
 };
 
 /**
+ * Add a pending location update for later sync
+ * @param location Location data to add to pending updates
+ */
+const addPendingLocationUpdate = async (location: LocationData): Promise<void> => {
+  try {
+    await Preferences.set({
+      key: PENDING_LOCATION_UPDATES_KEY,
+      value: JSON.stringify(location),
+    });
+  } catch (error) {
+    console.error("Error adding pending location update:", error);
+  }
+};
+
+/**
  * Get location privacy settings
+ * @returns Promise with the location privacy settings
  */
 export const getLocationPrivacy = async (): Promise<LocationPrivacy> => {
   try {
@@ -268,6 +295,7 @@ export const getLocationPrivacy = async (): Promise<LocationPrivacy> => {
 
 /**
  * Update location privacy settings
+ * @param privacy New privacy settings
  */
 export const updateLocationPrivacy = async (privacy: LocationPrivacy): Promise<void> => {
   try {
@@ -318,6 +346,7 @@ export const updateLocationPrivacy = async (privacy: LocationPrivacy): Promise<v
 
 /**
  * Add a pending privacy update
+ * @param privacy Privacy settings to add to pending updates
  */
 const addPendingPrivacyUpdate = async (privacy: LocationPrivacy): Promise<void> => {
   try {
@@ -357,7 +386,7 @@ export const getNearbyUsers = async (radius: number = 5000, limit: number = 20):
     }
 
     const response = await fetch(
-      `${API_URL}${API_ENDPOINTS.LOCATION.NEARBY_USERS}?longitude=${location.longitude}&latitude=${location.latitude}&radius=${radius}&limit=${limit}`,
+      `${API_URL}${API_ENDPOINTS.LOCATION.NEARBY_USERS(location.longitude, location.latitude, radius, limit)}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -380,19 +409,53 @@ export const getNearbyUsers = async (radius: number = 5000, limit: number = 20):
 
 /**
  * Get location name from coordinates using reverse geocoding
+ * @param latitude Latitude coordinate
+ * @param longitude Longitude coordinate
+ * @returns Human-readable location name
  */
 export const getLocationName = async (latitude: number, longitude: number): Promise<string> => {
   try {
-    // This would typically use a geocoding service like Google Maps or Nominatim
-    // For now, we'll use a simplistic approach with mock data
+    // This would typically use a geocoding service like Google Maps, OpenStreetMap/Nominatim, or Mapbox
+    // For this example, we'll use Nominatim (OpenStreetMap)
+    const apiUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`;
+    
+    const response = await fetch(apiUrl, {
+      headers: {
+        // It's good practice to identify your application to the geocoding service
+        "User-Agent": "BeUnreal Mobile App",
+      },
+    });
 
-    // In a real app, you would implement a call to a geocoding service here
-    // const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`);
-    // const data = await response.json();
-    // return data.display_name;
+    if (!response.ok) {
+      throw new Error("Failed to get location name");
+    }
 
-    // Mock implementation
-    return "Lyon, France";
+    const data = await response.json();
+    
+    // Nominatim returns location details in different formats
+    // We'll try to build a nice human-readable location
+    if (data.display_name) {
+      // Extract more useful parts for UI display
+      const parts = [];
+      
+      // Add locality or city if available
+      if (data.address) {
+        if (data.address.city) parts.push(data.address.city);
+        else if (data.address.town) parts.push(data.address.town);
+        else if (data.address.village) parts.push(data.address.village);
+        else if (data.address.suburb) parts.push(data.address.suburb);
+        
+        // Add region/state if available
+        if (data.address.state) parts.push(data.address.state);
+        // Add country
+        if (data.address.country) parts.push(data.address.country);
+      }
+      
+      // Return a simplified version if we have parts, otherwise the full display_name
+      return parts.length > 0 ? parts.join(", ") : data.display_name;
+    }
+    
+    return "Unknown location";
   } catch (error) {
     console.error("Error getting location name:", error);
     return "Unknown location";
@@ -436,11 +499,15 @@ export const syncPendingLocationUpdates = async (): Promise<void> => {
 
   try {
     // Sync location data
-    const location = await getCachedLocation();
+    const locationResult = await Preferences.get({ key: PENDING_LOCATION_UPDATES_KEY });
 
-    if (location) {
+    if (locationResult.value) {
+      const location: LocationData = JSON.parse(locationResult.value);
+
       try {
         await updateLocationOnServer(location);
+        // Clear pending update
+        await Preferences.remove({ key: PENDING_LOCATION_UPDATES_KEY });
       } catch (error) {
         console.error("Error syncing location data:", error);
       }
@@ -448,10 +515,10 @@ export const syncPendingLocationUpdates = async (): Promise<void> => {
 
     // Sync privacy settings
     const PENDING_PRIVACY_UPDATES_KEY = "pending_privacy_updates";
-    const result = await Preferences.get({ key: PENDING_PRIVACY_UPDATES_KEY });
+    const privacyResult = await Preferences.get({ key: PENDING_PRIVACY_UPDATES_KEY });
 
-    if (result.value) {
-      const privacy: LocationPrivacy = JSON.parse(result.value);
+    if (privacyResult.value) {
+      const privacy: LocationPrivacy = JSON.parse(privacyResult.value);
 
       try {
         const token = await getAuthToken();
@@ -473,7 +540,7 @@ export const syncPendingLocationUpdates = async (): Promise<void> => {
         });
 
         if (response.ok) {
-          // Clear pending updates
+          // Clear pending update
           await Preferences.remove({ key: PENDING_PRIVACY_UPDATES_KEY });
         }
       } catch (error) {
@@ -486,7 +553,7 @@ export const syncPendingLocationUpdates = async (): Promise<void> => {
 };
 
 /**
- * Setup connectivity listeners
+ * Set up connectivity listeners for syncing
  */
 export const setupConnectivityListeners = (): void => {
   window.addEventListener("online", async () => {
@@ -497,3 +564,16 @@ export const setupConnectivityListeners = (): void => {
 
 // Initialize connectivity listeners
 setupConnectivityListeners();
+
+// Initialize location settings when importing this module
+(async () => {
+  try {
+    // If location setting doesn't exist, set default (enabled)
+    const result = await Preferences.get({ key: LOCATION_ENABLED_KEY });
+    if (result.value === null) {
+      await setLocationEnabled(true);
+    }
+  } catch (error) {
+    console.error("Error initializing location settings:", error);
+  }
+})();

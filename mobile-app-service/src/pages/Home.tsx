@@ -11,117 +11,76 @@ import {
   IonText,
   IonButton,
   IonIcon,
-  IonFab,
-  IonFabButton,
-  IonGrid,
-  IonRow,
-  IonCol,
-  IonCard,
-  IonCardHeader,
-  IonCardContent,
+  IonSegment,
+  IonSegmentButton,
   IonModal,
-  IonAvatar,
-  IonItem,
-  IonLabel,
-  IonActionSheet,
+  IonBadge,
   IonAlert,
+  IonLabel,
   RefresherEventDetail,
-  useIonRouter,
+  SegmentCustomEvent,
 } from "@ionic/react";
 import {
   camera,
-  heart,
-  heartOutline,
-  chatbubbleOutline,
-  ellipsisHorizontal,
-  trash,
-  share,
+  locationOutline,
+  people,
   chevronDownCircle,
   imageOutline,
 } from "ionicons/icons";
 import { useAuthContext } from "../contexts/AuthContext";
-import { getFeedPosts, PostWithUser, likePost, unlikePost, deletePost } from "../services/post.service";
+import { getFeedStories, StoryWithUser } from "../services/story.service";
 import { takePicture } from "../services/camera.service";
 import { CameraResultType, CameraSource } from "@capacitor/camera";
-import { createPost } from "../services/post.service";
 import CameraView from "../components/CameraView";
-import PostComposer from "../components/PostComposer";
 import StoryCircles from "../components/StoryCircles";
-import "./Home.css";
+import StoryMap from "../components/StoryMap";
+import StoryViewer from "../components/StoryViewer";
+import StoryCapture from "../components/StoryCapture";
 import logoImage from "../assets/logo.png";
+import "./Home.css";
 
 const Home: React.FC = () => {
   const { user } = useAuthContext();
-  const router = useIonRouter();
 
-  const [posts, setPosts] = useState<PostWithUser[]>([]);
+  const [stories, setStories] = useState<StoryWithUser[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [selectedSegment, setSelectedSegment] = useState<string>("feed");
   const [showCameraModal, setShowCameraModal] = useState<boolean>(false);
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [showComposer, setShowComposer] = useState<boolean>(false);
-  const [showActionSheet, setShowActionSheet] = useState<boolean>(false);
-  const [selectedPost, setSelectedPost] = useState<PostWithUser | null>(null);
-  const [showDeleteAlert, setShowDeleteAlert] = useState<boolean>(false);
+  const [capturedPhoto, setCapturedPhoto] = useState<any>(null);
+  const [showStoryCapture, setShowStoryCapture] = useState<boolean>(false);
+  const [showStoryViewer, setShowStoryViewer] = useState<boolean>(false);
+  const [selectedStory, setSelectedStory] = useState<StoryWithUser | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [showLocationAlert, setShowLocationAlert] = useState<boolean>(false);
 
+  // Load stories when component mounts or refreshes
   useEffect(() => {
-    loadFeedPosts();
+    loadStories();
   }, []);
 
-  const loadFeedPosts = async () => {
+  const loadStories = async () => {
     try {
       setIsLoading(true);
-      const feedPosts = await getFeedPosts();
-      setPosts(feedPosts);
+      const loadedStories = await getFeedStories();
+      setStories(loadedStories);
     } catch (error) {
-      console.error("Error loading feed posts:", error);
+      console.error("Error loading stories:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleRefresh = (event: CustomEvent<RefresherEventDetail>) => {
-    loadFeedPosts().then(() => {
+    loadStories().then(() => {
       event.detail.complete();
     });
   };
 
-  const handleLikeToggle = async (post: PostWithUser) => {
-    try {
-      if (!user) return;
-
-      // Optimistic update
-      const isLiked = post.likes.includes(user.id);
-
-      // Create a new posts array with the updated post
-      const updatedPosts = posts.map((p) => {
-        if (p.id === post.id) {
-          return {
-            ...p,
-            likes: isLiked ? p.likes.filter((id) => id !== user.id) : [...p.likes, user.id],
-          };
-        }
-        return p;
-      });
-
-      setPosts(updatedPosts);
-
-      // Call the API
-      if (isLiked) {
-        await unlikePost(post.id);
-      } else {
-        await likePost(post.id);
-      }
-    } catch (error) {
-      console.error("Error toggling like:", error);
-      // Revert on error
-      loadFeedPosts();
-    }
+  const handleSegmentChange = (e: SegmentCustomEvent) => {
+    setSelectedSegment(e.detail.value as string);
   };
 
-  const handleCommentClick = (post: PostWithUser) => {
-    router.push(`/app/photo/${post.id}`);
-  };
-
+  // Conservé pour implémenter un futur bouton de prise de photo
   const handleTakePhoto = async () => {
     try {
       const photo = await takePicture({
@@ -136,9 +95,14 @@ const Home: React.FC = () => {
       });
 
       if (photo && photo.webPath) {
-        setCapturedImage(photo.webPath);
+        setCapturedPhoto({
+          id: `temp_${Date.now()}`,
+          webPath: photo.webPath,
+          timestamp: Date.now(),
+          type: "story"
+        });
         setShowCameraModal(false);
-        setShowComposer(true);
+        setShowStoryCapture(true);
       }
     } catch (error) {
       console.error("Error taking photo:", error);
@@ -146,106 +110,71 @@ const Home: React.FC = () => {
   };
 
   const handlePhotoTaken = (webPath: string) => {
-    setCapturedImage(webPath);
-    setShowCameraModal(false);
-    setShowComposer(true);
-  };
-
-  const handlePublishPost = async (caption: string) => {
-    try {
-      if (!capturedImage) return;
-
-      await createPost(capturedImage, caption);
-
-      // Reset states
-      setCapturedImage(null);
-      setShowComposer(false);
-
-      // Reload feed
-      await loadFeedPosts();
-    } catch (error) {
-      console.error("Error publishing post:", error);
-    }
-  };
-
-  const handlePostOptions = (post: PostWithUser) => {
-    setSelectedPost(post);
-    setShowActionSheet(true);
-  };
-
-  const handleDeletePost = async () => {
-    try {
-      if (!selectedPost) return;
-
-      await deletePost(selectedPost.id);
-
-      // Remove post from state
-      setPosts(posts.filter((p) => p.id !== selectedPost.id));
-
-      // Reset selected post
-      setSelectedPost(null);
-    } catch (error) {
-      console.error("Error deleting post:", error);
-    } finally {
-      setShowDeleteAlert(false);
-    }
-  };
-
-  const formatDate = (timestamp: number) => {
-    const now = new Date();
-    const postDate = new Date(timestamp);
-    const diffTime = Math.abs(now.getTime() - postDate.getTime());
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) {
-      const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
-
-      if (diffHours === 0) {
-        const diffMinutes = Math.floor(diffTime / (1000 * 60));
-        return `${diffMinutes} minute${diffMinutes !== 1 ? "s" : ""} ago`;
-      }
-
-      return `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`;
-    }
-
-    if (diffDays === 1) {
-      return "Yesterday";
-    }
-
-    if (diffDays < 7) {
-      return `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
-    }
-
-    return postDate.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
+    setCapturedPhoto({
+      id: `temp_${Date.now()}`,
+      webPath,
+      timestamp: Date.now(),
+      type: "story"
     });
+    setShowCameraModal(false);
+    setShowStoryCapture(true);
   };
 
-  const renderPosts = () => {
+  const handleStoryPublished = () => {
+    setShowStoryCapture(false);
+    setCapturedPhoto(null);
+    loadStories();
+  };
+
+  const handleStorySelected = (story: StoryWithUser) => {
+    setSelectedStory(story);
+    setShowStoryViewer(true);
+  };
+
+  const handleLocationError = (error: string) => {
+    setLocationError(error);
+    setShowLocationAlert(true);
+  };
+
+  const renderFeedContent = () => {
     if (isLoading) {
       return (
+        // @ts-ignore
         <div className="spinner-container">
-          <IonSpinner name="crescent" />
+          {/* @ts-ignore */}
+          <IonSpinner name="crescent" color="primary" />
+          {/* @ts-ignore */}
           <IonText color="medium">
-            <p>Loading posts...</p>
+            <p>Loading stories...</p>
           </IonText>
         </div>
       );
     }
 
-    if (posts.length === 0) {
+    if (stories.length === 0) {
       return (
+        // @ts-ignore
         <div className="empty-feed">
+          {/* @ts-ignore */}
           <IonIcon icon={imageOutline} className="empty-feed-icon" />
-          <h2>No Posts Yet</h2>
-          <p>Follow users or take your first photo to see posts here</p>
+          <h2>No Stories Yet</h2>
+          <p>Follow users or share your first story to see content here</p>
+          {/* @ts-ignore */}
           <div className="empty-feed-actions">
-            <IonButton fill="solid" onClick={() => setShowCameraModal(true)}>
+            {/* @ts-ignore */}
+            <IonButton 
+              fill="solid" 
+              onClick={() => setShowCameraModal(true)}
+            >
+              {/* @ts-ignore */}
               <IonIcon slot="start" icon={camera} />
               Take Photo
             </IonButton>
-            <IonButton fill="outline" routerLink="/app/search">
+            {/* @ts-ignore */}
+            <IonButton 
+              fill="outline" 
+              routerLink="/app/search"
+            >
               Find People
             </IonButton>
           </div>
@@ -254,91 +183,33 @@ const Home: React.FC = () => {
     }
 
     return (
-      <IonGrid className="feed-grid">
-        {posts.map((post) => (
-          <IonRow key={post.id}>
-            <IonCol size="12">
-              <IonCard className="post-card">
-                <div className="post-header">
-                  <IonItem lines="none" button routerLink={`/app/user/${post.user.id}`}>
-                    <IonAvatar slot="start">
-                      {post.user.profilePicture ? (
-                        <img src={post.user.profilePicture} alt={post.user.username} />
-                      ) : (
-                        <div className="default-avatar">{post.user.username.charAt(0).toUpperCase()}</div>
-                      )}
-                    </IonAvatar>
-                    <IonLabel>
-                      <h2 className="post-username">{post.user.username}</h2>
-                      <p className="post-time">{formatDate(post.createdAt)}</p>
-                    </IonLabel>
-                  </IonItem>
-
-                  <IonButton fill="clear" className="post-options-button" onClick={() => handlePostOptions(post)}>
-                    <IonIcon slot="icon-only" icon={ellipsisHorizontal} />
-                  </IonButton>
-                </div>
-
-                <div className="post-image-container" onClick={() => router.push(`/app/photo/${post.id}`)}>
-                  <img src={post.imageUrl} alt="Post" className="post-image" />
-                </div>
-
-                <IonCardContent className="post-content">
-                  <div className="post-actions">
-                    <IonButton fill="clear" className="post-action-button" onClick={() => handleLikeToggle(post)}>
-                      <IonIcon
-                        slot="icon-only"
-                        icon={user && post.likes.includes(user.id) ? heart : heartOutline}
-                        className={user && post.likes.includes(user.id) ? "liked" : ""}
-                      />
-                    </IonButton>
-
-                    <IonButton fill="clear" className="post-action-button" onClick={() => handleCommentClick(post)}>
-                      <IonIcon slot="icon-only" icon={chatbubbleOutline} />
-                    </IonButton>
-                  </div>
-
-                  {post.likes.length > 0 && (
-                    <div className="post-likes">
-                      <strong>
-                        {post.likes.length} like{post.likes.length !== 1 ? "s" : ""}
-                      </strong>
-                    </div>
-                  )}
-
-                  {post.caption && (
-                    <div className="post-caption">
-                      <strong>{post.user.username}</strong> {post.caption}
-                    </div>
-                  )}
-
-                  {post.comments.length > 0 && (
-                    <div className="post-comments-link" onClick={() => handleCommentClick(post)}>
-                      View all {post.comments.length} comment{post.comments.length !== 1 ? "s" : ""}
-                    </div>
-                  )}
-                </IonCardContent>
-              </IonCard>
-            </IonCol>
-          </IonRow>
-        ))}
-      </IonGrid>
+      // @ts-ignore
+      <div className="stories-feed">
+        <StoryCircles stories={stories} onStorySelect={handleStorySelected} />
+      </div>
     );
   };
 
   return (
     <IonPage className="home-page">
+      {/* @ts-ignore */}
       <IonHeader>
+        {/* @ts-ignore */}
         <IonToolbar>
+          {/* @ts-ignore */}
           <div className="home-title-container">
             <img src={logoImage} alt="Logo" className="header-logo" />
+            {/* @ts-ignore */}
             <IonTitle>BeUnreal</IonTitle>
           </div>
         </IonToolbar>
       </IonHeader>
 
+      {/* @ts-ignore */}
       <IonContent fullscreen>
+        {/* @ts-ignore */}
         <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
+          {/* @ts-ignore */}
           <IonRefresherContent
             pullingIcon={chevronDownCircle}
             pullingText="Pull to refresh"
@@ -347,83 +218,104 @@ const Home: React.FC = () => {
           />
         </IonRefresher>
 
-        <StoryCircles />
-        {renderPosts()}
-
-        {/* Camera Modal */}
-        <IonModal isOpen={showCameraModal} onDidDismiss={() => setShowCameraModal(false)} className="camera-modal">
-          <CameraView onPhotoTaken={handlePhotoTaken} onClose={() => setShowCameraModal(false)} />
-        </IonModal>
-
-        {/* Post Composer */}
-        <IonModal
-          isOpen={showComposer}
-          onDidDismiss={() => {
-            setShowComposer(false);
-            setCapturedImage(null);
-          }}
-          className="composer-modal"
+        {/* @ts-ignore */}
+        <IonSegment 
+          value={selectedSegment} 
+          onIonChange={handleSegmentChange} 
+          className="feed-segment"
         >
-          <PostComposer
-            imageUrl={capturedImage || ""}
-            onPublish={handlePublishPost}
-            onCancel={() => {
-              setShowComposer(false);
-              setCapturedImage(null);
-            }}
+          {/* @ts-ignore */}
+          <IonSegmentButton value="feed">
+            {/* @ts-ignore */}
+            <IonIcon icon={people} />
+            {/* @ts-ignore */}
+            <IonLabel>Feed</IonLabel>
+          </IonSegmentButton>
+          {/* @ts-ignore */}
+          <IonSegmentButton value="nearby">
+            {/* @ts-ignore */}
+            <IonIcon icon={locationOutline} />
+            {/* @ts-ignore */}
+            <IonLabel>
+              Nearby
+              {locationError && (
+                /* @ts-ignore */
+                <IonBadge color="danger" className="location-badge">!</IonBadge>
+              )}
+            </IonLabel>
+          </IonSegmentButton>
+        </IonSegment>
+
+        {selectedSegment === "feed" ? (
+          renderFeedContent()
+        ) : (
+          <StoryMap 
+            onStorySelect={handleStorySelected} 
+            onLocationError={handleLocationError} 
+          />
+        )}
+
+        {/* @ts-ignore */}
+        <IonModal 
+          isOpen={showCameraModal} 
+          onDidDismiss={() => setShowCameraModal(false)} 
+          className="camera-modal"
+        >
+          <CameraView 
+            onPhotoTaken={handlePhotoTaken} 
+            onClose={() => setShowCameraModal(false)} 
           />
         </IonModal>
 
-        {/* Action Sheet for post options */}
-        <IonActionSheet
-          isOpen={showActionSheet}
+        {/* @ts-ignore */}
+        <IonModal 
+          isOpen={showStoryCapture} 
           onDidDismiss={() => {
-            setShowActionSheet(false);
-            setSelectedPost(null);
-          }}
-          buttons={[
-            {
-              text: "Share",
-              icon: share,
-              handler: () => {
-                console.log("Share clicked");
-              },
-            },
-            ...(selectedPost && selectedPost.user.id === user?.id
-              ? [
-                  {
-                    text: "Delete",
-                    role: "destructive",
-                    icon: trash,
-                    handler: () => {
-                      setShowDeleteAlert(true);
-                    },
-                  },
-                ]
-              : []),
-            {
-              text: "Cancel",
-              role: "cancel",
-            },
-          ]}
-        />
+            setShowStoryCapture(false);
+            setCapturedPhoto(null);
+          }} 
+          className="story-capture-modal"
+        >
+          {capturedPhoto && (
+            <StoryCapture 
+              photoData={capturedPhoto} 
+              onCancel={() => {
+                setShowStoryCapture(false);
+                setCapturedPhoto(null);
+              }}
+              onSuccess={handleStoryPublished}
+            />
+          )}
+        </IonModal>
 
-        {/* Delete confirmation alert */}
+        {selectedStory && (
+          <StoryViewer
+            story={selectedStory}
+            isOpen={showStoryViewer}
+            onClose={() => {
+              setShowStoryViewer(false);
+              setSelectedStory(null);
+            }}
+            onDelete={() => {
+              setShowStoryViewer(false);
+              setSelectedStory(null);
+              loadStories();
+            }}
+            currentUser={user}
+          />
+        )}
+
+        {/* @ts-ignore */}
         <IonAlert
-          isOpen={showDeleteAlert}
-          onDidDismiss={() => setShowDeleteAlert(false)}
-          header="Delete Post"
-          message="Are you sure you want to delete this post? This action cannot be undone."
+          isOpen={showLocationAlert}
+          onDidDismiss={() => setShowLocationAlert(false)}
+          header="Location Error"
+          message={locationError || "Error accessing your location. Please check your settings."}
           buttons={[
             {
-              text: "Cancel",
+              text: "OK",
               role: "cancel",
-            },
-            {
-              text: "Delete",
-              role: "destructive",
-              handler: handleDeletePost,
-            },
+            }
           ]}
         />
       </IonContent>

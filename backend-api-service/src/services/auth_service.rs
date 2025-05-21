@@ -53,10 +53,12 @@ pub async fn login(db: &Database, payload: AuthLogin) -> Result<AuthResponse, Bo
     }
 
     let user_id = user.id.unwrap().to_hex();
-
     let token = encode_external_jwt(user_id, user.role)?;
 
-    Ok(AuthResponse { token })
+    Ok(AuthResponse { 
+        token,
+        user: user.clone(),
+    })
 }
 
 // =============================================================================================================================

@@ -1,5 +1,5 @@
 import { Preferences } from "@capacitor/preferences";
-import { API_URL, API_ENDPOINTS } from "../config";
+import { API_URL, API_ENDPOINTS, fetchApi } from "../config";
 
 // Keys for auth storage
 const AUTH_TOKEN_KEY = "auth_token";
@@ -8,15 +8,15 @@ const PENDING_SOCIAL_ACTIONS_KEY = "pending_social_actions";
 
 export interface User {
   id: string;
-  username: string;
   email: string;
-  profilePicture?: string | null;
-  fullName?: string;
-  bio?: string;
-  following?: string[];
-  followers?: string[];
+  username: string;
+  avatar: string | null;
+  bio: string;
+  display_name: string;
+  following: string[];
+  followers: string[];
   createdAt: number;
-  role?: string;
+  role: string;
 }
 
 export interface SocialAction {
@@ -25,13 +25,39 @@ export interface SocialAction {
   timestamp: number;
 }
 
+export interface UpdateProfileData {
+  username?: string;
+  email?: string;
+  password?: string;
+  bio?: string;
+  display_name?: string;
+  avatar?: string | null;
+  location?: {
+    type: "Point";
+    coordinates: [number, number];
+  };
+}
+
 /**
  * Récupère le token d'authentification
  */
 export const getAuthToken = async (): Promise<string | null> => {
   try {
+    // Essayer d'abord le localStorage
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (token) {
+      return token;
+    }
+
+    // Si pas dans localStorage, essayer Capacitor Storage
     const result = await Preferences.get({ key: AUTH_TOKEN_KEY });
-    return result.value || null;
+    if (result.value) {
+      // Synchroniser avec localStorage
+      localStorage.setItem(AUTH_TOKEN_KEY, result.value);
+      return result.value;
+    }
+
+    return null;
   } catch (error) {
     console.error("Error getting auth token:", error);
     return null;
@@ -43,6 +69,10 @@ export const getAuthToken = async (): Promise<string | null> => {
  */
 export const saveAuthToken = async (token: string): Promise<void> => {
   try {
+    // Sauvegarder dans localStorage
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
+
+    // Sauvegarder dans Capacitor Storage
     await Preferences.set({
       key: AUTH_TOKEN_KEY,
       value: token,
@@ -61,65 +91,47 @@ const isOnline = (): boolean => {
 };
 
 /**
- * Register a new user
- * @param email User email
- * @param username User username
- * @param password User password
- * @returns Promise with the user data
+ * Inscription d'un nouvel utilisateur
+ * @param email Email de l'utilisateur
+ * @param username Nom d'utilisateur
+ * @param password Mot de passe
+ * @param bio Bio de l'utilisateur (optionnel)
+ * @param location Localisation (optionnelle)
+ * @returns Promise avec les données utilisateur
  */
-export const register = async (email: string, username: string, password: string): Promise<User> => {
+export const register = async (
+  email: string,
+  username: string,
+  password: string,
+  bio?: string,
+  location?: { type: "Point"; coordinates: [number, number] }
+): Promise<User> => {
   try {
-    if (isOnline()) {
-      // Online mode: Use the API
-      const response = await fetch(`${API_URL}/auth/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include", // Important pour stocker les cookies
-        body: JSON.stringify({
-          email,
-          password,
-          username,
-        }),
-      });
+    if (!isOnline()) throw new Error("Impossible de s'inscrire hors-ligne");
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Registration failed: ${response.status}`);
-      }
+    const body: any = {
+      email,
+      username,
+      password,
+    };
+    if (bio) body.bio = bio;
+    if (location) body.location = location;
 
-      const data = await response.json();
+    const data = await fetchApi<{ token: string }>(API_ENDPOINTS.auth.register, {
+      method: "POST",
+      body,
+    });
 
-      // Stocke le token JWT si disponible dans la réponse
-      if (data.data && data.data.token) {
-        await saveAuthToken(data.data.token);
-      }
-
-      // Créer un objet utilisateur à partir de la réponse
-      const user: User = {
-        id: data.data.user._id || data.data.user.id,
-        email: data.data.user.email,
-        username: data.data.user.username,
-        profilePicture: data.data.user.avatar || null,
-        bio: data.data.user.bio || "",
-        fullName: data.data.user.display_name || "",
-        following: data.data.user.following || [],
-        followers: data.data.user.followers || [],
-        createdAt: new Date(data.data.user.created_at).getTime(),
-        role: data.data.user.role,
-      };
-
-      // Save user data
-      await saveCurrentUser(user);
-
-      return user;
-    } else {
-      // Offline mode: Cannot register without internet
-      throw new Error("Cannot register while offline");
+    if (data.token) {
+      await saveAuthToken(data.token);
     }
+
+    // Récupérer le profil utilisateur après inscription
+    const user = await getCurrentUser();
+    if (!user) throw new Error("Impossible de récupérer le profil après inscription");
+    return user;
   } catch (error) {
-    console.error("Error registering user:", error);
+    console.error("Erreur lors de l'inscription:", error);
     throw error;
   }
 };
@@ -133,28 +145,16 @@ export const register = async (email: string, username: string, password: string
 export const login = async (emailOrUsername: string, password: string): Promise<User> => {
   try {
     if (isOnline()) {
-      // Online mode: Use the API
-      const response = await fetch(`${API_URL}/auth/login`, {
+      const data = await fetchApi<{ data: { user: any; token: string } }>(API_ENDPOINTS.auth.login, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include", // Important pour que le cookie de session soit stocké
-        body: JSON.stringify({
-          credential: emailOrUsername,
+        body: {
+          email_or_username: emailOrUsername,
           password,
-        }),
+        },
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Login failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-
       // Stocke le token JWT si disponible dans la réponse
-      if (data.data && data.data.token) {
+      if (data.data.token) {
         await saveAuthToken(data.data.token);
       }
 
@@ -189,41 +189,25 @@ export const login = async (emailOrUsername: string, password: string): Promise<
 };
 
 /**
- * Get user profile from API
+ * Récupère le profil complet de l'utilisateur courant
  */
 const getUserProfile = async (): Promise<User> => {
   try {
-    const token = await getAuthToken();
-
-    const response = await fetch(`${API_URL}/users/me`, {
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to get user profile: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    // Convert API response to our format
+    const data = await fetchApi<{ id: string; username: string; email: string; avatar?: string; bio?: string; display_name?: string; following?: string[]; followers?: string[]; created_at: string; role: string; location?: any }>(API_ENDPOINTS.users.me);
     return {
-      id: data.data._id || data.data.id,
-      email: data.data.email,
-      username: data.data.username,
-      profilePicture: data.data.avatar || null,
-      bio: data.data.bio || "",
-      fullName: data.data.display_name || "",
-      following: data.data.following || [],
-      followers: data.data.followers || [],
-      createdAt: new Date(data.data.created_at).getTime(),
-      role: data.data.role,
+      id: data.id,
+      email: data.email,
+      username: data.username,
+      avatar: data.avatar || null,
+      bio: data.bio || "",
+      display_name: data.display_name || "",
+      following: data.following || [],
+      followers: data.followers || [],
+      createdAt: data.created_at ? new Date(data.created_at).getTime() : Date.now(),
+      role: data.role,
     };
   } catch (error) {
-    console.error("Error getting user profile:", error);
+    console.error("Erreur lors de la récupération du profil:", error);
     throw error;
   }
 };
@@ -236,30 +220,16 @@ const getUserProfile = async (): Promise<User> => {
 export const getUserById = async (userId: string): Promise<User | null> => {
   try {
     if (isOnline()) {
-      const token = await getAuthToken();
-
-      const response = await fetch(`${API_URL}/users/${userId}`, {
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to get user: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await fetchApi<{ data: any }>(API_ENDPOINTS.users.byId(userId));
 
       // Convert API response to our format
       return {
         id: data.data._id || data.data.id,
         username: data.data.username,
         email: data.data.email,
-        profilePicture: data.data.avatar || null,
+        avatar: data.data.avatar || null,
         bio: data.data.bio || "",
-        fullName: data.data.display_name || "",
+        display_name: data.data.display_name || "",
         following: data.data.following || [],
         followers: data.data.followers || [],
         createdAt: new Date(data.data.created_at).getTime(),
@@ -292,34 +262,17 @@ export const getUserById = async (userId: string): Promise<User | null> => {
 };
 
 /**
- * Logout the current user
+ * Déconnexion de l'utilisateur courant
  */
 export const logout = async (): Promise<void> => {
   try {
-    if (isOnline()) {
-      // Appeler l'API pour déconnecter la session
-      const token = await getAuthToken();
-
-      try {
-        await fetch(`${API_URL}/auth/logout`, {
-          method: "POST",
-          headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-        });
-      } catch (error) {
-        console.error("Error calling logout API:", error);
-        // Continue with local logout even if API call fails
-      }
-    }
-
-    // Supprimer les données locales
+    // Suppression locale du token et des données utilisateur
     await Preferences.remove({ key: AUTH_TOKEN_KEY });
     await Preferences.remove({ key: USER_DATA_KEY });
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(USER_DATA_KEY);
   } catch (error) {
-    console.error("Error logging out:", error);
+    console.error("Erreur lors de la déconnexion:", error);
     throw error;
   }
 };
@@ -336,15 +289,8 @@ export const isAuthenticated = async (): Promise<boolean> => {
     // Si en ligne, vérifier la validité du token
     if (isOnline()) {
       try {
-        const response = await fetch(`${API_URL}/auth/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-        });
-
-        return response.ok;
+        await fetchApi(API_ENDPOINTS.auth.me);
+        return true;
       } catch (error) {
         // En cas d'erreur réseau, on considère que le token est valide pour permettre le mode hors ligne
         console.error("Error checking token validity:", error);
@@ -371,126 +317,68 @@ export const getCurrentUser = async (): Promise<User | null> => {
     const result = await Preferences.get({ key: USER_DATA_KEY });
     const localUser = result.value ? JSON.parse(result.value) : null;
 
-    // Si en ligne, récupérer les données à jour depuis le serveur
     if (isOnline()) {
       try {
         const token = await getAuthToken();
         if (!token && !localUser) return null;
-
-        const response = await fetch(`${API_URL}/users/me`, {
-          headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-        });
-
-        if (!response.ok) {
-          // Si l'API échoue mais qu'on a des données locales, on les utilise
-          if (localUser) return localUser;
-          return null;
-        }
-
-        const data = await response.json();
-
-        // Convertir la réponse API à notre format
-        const user: User = {
-          id: data.data._id || data.data.id,
-          email: data.data.email,
-          username: data.data.username,
-          profilePicture: data.data.avatar || null,
-          bio: data.data.bio || "",
-          fullName: data.data.display_name || "",
-          following: data.data.following || [],
-          followers: data.data.followers || [],
-          createdAt: new Date(data.data.created_at).getTime(),
-          role: data.data.role,
-        };
-
-        // Mettre à jour les données locales
+        const user = await getUserProfile();
         await saveCurrentUser(user);
-
         return user;
       } catch (error) {
-        console.error("Error getting current user from API:", error);
-        // En cas d'erreur, utiliser les données locales
+        console.error("Erreur lors de la récupération du profil en ligne:", error);
         return localUser;
       }
     }
-
     return localUser;
   } catch (error) {
-    console.error("Error getting current user:", error);
+    console.error("Erreur lors de la récupération du profil:", error);
     return null;
   }
 };
 
 /**
- * Update the current user profile
- * @param userData User data to update
- * @returns Promise with the updated user data
+ * Met à jour le profil utilisateur courant
+ * @param userData Données à mettre à jour
+ * @returns Promise avec le profil utilisateur mis à jour
  */
-export const updateUserProfile = async (userData: Partial<User>): Promise<User> => {
+export const updateUserProfile = async (userData: UpdateProfileData): Promise<User> => {
   try {
-    // Get current user
     const currentUser = await getCurrentUser();
+    if (!currentUser) throw new Error("Non authentifié");
+    if (!isOnline()) throw new Error("Impossible de mettre à jour le profil hors-ligne");
 
-    if (!currentUser) {
-      throw new Error("Not authenticated");
-    }
+    // Préparer les données selon la doc API
+    const apiUserData: any = {
+      email: userData.email || currentUser.email,
+      password: userData.password || undefined, // facultatif si non changé
+      username: userData.username || currentUser.username,
+      bio: userData.bio || currentUser.bio,
+      location: userData.location || undefined,
+    };
+    // Supprimer les champs undefined
+    Object.keys(apiUserData).forEach((key) => apiUserData[key] === undefined && delete apiUserData[key]);
 
-    if (isOnline()) {
-      const token = await getAuthToken();
+    const data = await fetchApi<{ id: string; username: string; email: string; avatar?: string; bio?: string; display_name?: string; following?: string[]; followers?: string[]; created_at: string; role: string; location?: any }>(API_ENDPOINTS.users.update, {
+      method: "PUT",
+      body: apiUserData,
+    });
 
-      // Map our internal fields to API fields
-      const apiUserData: Record<string, any> = {};
-
-      if (userData.username !== undefined) apiUserData.username = userData.username;
-      if (userData.fullName !== undefined) apiUserData.display_name = userData.fullName;
-      if (userData.bio !== undefined) apiUserData.bio = userData.bio;
-      if (userData.profilePicture !== undefined) {
-        // Pour le profil, on définit l'avatar avec l'URL de l'image
-        apiUserData.avatar = userData.profilePicture;
-      }
-
-      const response = await fetch(`${API_URL}/users/me`, {
-        method: "PUT",
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(apiUserData),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to update profile: ${response.status}`);
-      }
-
-      // Récupérer le profil mis à jour
-      const updatedUser = await getCurrentUser();
-      if (!updatedUser) {
-        throw new Error("Failed to get updated user profile");
-      }
-
-      return updatedUser;
-    } else {
-      // Offline mode: Update only locally
-      const updatedUser: User = {
-        ...currentUser,
-        ...userData,
-      };
-
-      // Save locally
-      await saveCurrentUser(updatedUser);
-
-      // Mark for sync when online
-      await markUserForSync(updatedUser);
-
-      return updatedUser;
-    }
+    const updatedUser: User = {
+      id: data.id,
+      email: data.email,
+      username: data.username,
+      avatar: data.avatar || null,
+      bio: data.bio || "",
+      display_name: data.display_name || "",
+      following: data.following || [],
+      followers: data.followers || [],
+      createdAt: data.created_at ? new Date(data.created_at).getTime() : Date.now(),
+      role: data.role,
+    };
+    await saveCurrentUser(updatedUser);
+    return updatedUser;
   } catch (error) {
-    console.error("Error updating user profile:", error);
+    console.error("Erreur lors de la mise à jour du profil:", error);
     throw error;
   }
 };
@@ -528,9 +416,9 @@ export const syncPendingUserUpdates = async (): Promise<void> => {
     // Update user via API
     await updateUserProfile({
       username: pendingUser.username,
-      fullName: pendingUser.fullName,
+      display_name: pendingUser.display_name,
       bio: pendingUser.bio,
-      profilePicture: pendingUser.profilePicture,
+      avatar: pendingUser.avatar,
     });
 
     // Clear pending updates
@@ -555,20 +443,7 @@ export const followUser = async (userId: string): Promise<User> => {
     }
 
     if (isOnline()) {
-      const token = await getAuthToken();
-
-      const response = await fetch(`${API_URL}/friends/request/${userId}`, {
-        method: "POST",
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to follow user: ${response.status}`);
-      }
+      await fetchApi(API_ENDPOINTS.friends.send(userId), { method: "POST" });
 
       // Optimistically update following list
       const following = currentUser.following || [];
@@ -660,20 +535,7 @@ export const unfollowUser = async (userId: string): Promise<User> => {
     }
 
     if (isOnline()) {
-      const token = await getAuthToken();
-
-      const response = await fetch(`${API_URL}/friends/${userId}`, {
-        method: "DELETE",
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to unfollow user: ${response.status}`);
-      }
+      await fetchApi(API_ENDPOINTS.friends.remove(userId), { method: "DELETE" });
 
       // Update following list
       const following = currentUser.following?.filter((id) => id !== userId) || [];
@@ -726,39 +588,32 @@ export const searchUsers = async (query: string): Promise<User[]> => {
     }
 
     if (isOnline()) {
-      const token = await getAuthToken();
+      // Vérifier si la requête est un email ou un ID
+      const isEmail = query.includes('@');
+      const searchParams = isEmail 
+        ? { email: query }
+        : { user_id: query };
 
-      const response = await fetch(`${API_URL}/friends/find`, {
+      const data = await fetchApi<{ data: any }>(API_ENDPOINTS.friends.find, {
         method: "POST",
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ query }),
+        body: searchParams,
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to search users: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      // Convert API response to our format
-      return data.data.map((user: any) => ({
+      // Convertir la réponse en tableau d'utilisateurs
+      const users: User[] = Array.isArray(data.data) ? data.data : [data.data];
+      return users.map((user: any) => ({
         id: user._id || user.id,
         username: user.username,
         email: user.email || "",
-        profilePicture: user.avatar || null,
+        avatar: user.avatar || null,
         bio: user.bio || "",
-        fullName: user.display_name || "",
+        display_name: user.display_name || "",
         following: user.following || [],
         followers: user.followers || [],
         createdAt: user.created_at ? new Date(user.created_at).getTime() : Date.now(),
         role: user.role || "User",
       }));
     } else {
-      // Offline mode: Can't search users without internet
       throw new Error("Cannot search users while offline");
     }
   } catch (error) {
@@ -779,35 +634,24 @@ export const getUsersByIds = async (userIds: string[]): Promise<User[]> => {
 
   if (isOnline()) {
     try {
-      const token = await getAuthToken();
       const users: User[] = [];
 
       // Fetch each user individually
       for (const userId of userIds) {
         try {
-          const response = await fetch(`${API_URL}/users/${userId}`, {
-            headers: {
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-              "Content-Type": "application/json",
-            },
-            credentials: "include",
+          const data = await fetchApi<{ data: any }>(API_ENDPOINTS.users.byId(userId));
+          users.push({
+            id: data.data._id || data.data.id,
+            username: data.data.username,
+            email: data.data.email || "",
+            avatar: data.data.avatar || null,
+            bio: data.data.bio || "",
+            display_name: data.data.display_name || "",
+            following: data.data.following || [],
+            followers: data.data.followers || [],
+            createdAt: data.data.created_at ? new Date(data.data.created_at).getTime() : Date.now(),
+            role: data.data.role || "User",
           });
-
-          if (response.ok) {
-            const data = await response.json();
-            users.push({
-              id: data.data._id || data.data.id,
-              username: data.data.username,
-              email: data.data.email || "",
-              profilePicture: data.data.avatar || null,
-              bio: data.data.bio || "",
-              fullName: data.data.display_name || "",
-              following: data.data.following || [],
-              followers: data.data.followers || [],
-              createdAt: data.data.created_at ? new Date(data.data.created_at).getTime() : Date.now(),
-              role: data.data.role || "User",
-            });
-          }
         } catch (error) {
           console.error(`Error fetching user ${userId}:`, error);
         }

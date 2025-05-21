@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, type ReactNode, type ReactElement } from "react";
 import {
   IonApp,
   IonRouterOutlet,
@@ -12,17 +12,17 @@ import {
   IonLoading,
   IonModal,
   IonToast,
+  type IonIconCustomEvent,
+  type IonTabButtonCustomEvent,
 } from "@ionic/react";
 import { IonReactRouter } from "@ionic/react-router";
-import { Route, Redirect } from "react-router";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { camera, image, search, chatbubble, people } from "ionicons/icons";
 import { isAuthenticated } from "./services/auth.service";
 import { AuthProvider } from "./contexts/AuthContext";
 import CameraView from "./components/CameraView";
 import PostComposer from "./components/PostComposer";
-import { takePicture } from "./services/camera.service";
-import { createPost } from "./services/post.service";
-import { CameraResultType, CameraSource } from "@capacitor/camera";
+import logoImage from "../assets/logo.png";
 import { appInitService } from "./services/app-init.service";
 import { logger } from "./services/logger.service";
 
@@ -55,7 +55,6 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Conversation from "./pages/Conversation";
 import EditProfile from "./pages/EditProfile";
-import PhotoView from "./pages/PhotoView";
 import UserProfile from "./pages/UserProfile";
 
 /* Custom CSS */
@@ -66,11 +65,11 @@ setupIonicReact();
 // Protected Route component
 const ProtectedRoute: React.FC<{
   component: React.ComponentType<any>;
-  exact?: boolean;
   path: string;
-}> = ({ component: Component, ...rest }) => {
+}> = ({ component: Component, path }) => {
   const [isChecking, setIsChecking] = useState(true);
   const [isAuthed, setIsAuthed] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -92,17 +91,14 @@ const ProtectedRoute: React.FC<{
     return <IonLoading isOpen={true} message={"Please wait..."} />;
   }
 
-  return (
-    <Route
-      {...rest}
-      render={(props) =>
-        isAuthed ? <Component {...props} /> : <Redirect to={{ pathname: "/login", state: { from: props.location } }} />
-      }
-    />
+  return isAuthed ? (
+    <Component />
+  ) : (
+    <Navigate to="/login" state={{ from: location }} replace />
   );
 };
 
-const App: React.FC = () => {
+const App: React.FC = (): ReactElement => {
   const [showCameraModal, setShowCameraModal] = useState<boolean>(false);
   const [showComposer, setShowComposer] = useState<boolean>(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -166,8 +162,6 @@ const App: React.FC = () => {
     try {
       if (!capturedImage) return;
 
-      await createPost(capturedImage, caption);
-
       // Reset states
       setCapturedImage(null);
       setShowComposer(false);
@@ -185,9 +179,9 @@ const App: React.FC = () => {
       <IonApp>
         <div className="app-loading-container">
           <div className="app-loading-content">
-            <img src="assets/logo.png" alt="BeUnreal Logo" className="app-logo" />
+            <img src="../assets/logo.png" alt="BeUnreal Logo" className="app-logo" />
             <h1>BeUnreal</h1>
-            <IonSpinner name="crescent" />
+            <IonSpinner name="crescent" color="primary" />
             <p>Loading your experience...</p>
           </div>
         </div>
@@ -199,101 +193,78 @@ const App: React.FC = () => {
     <AuthProvider>
       <IonApp>
         <IonReactRouter>
-          <Route path="/login" component={Login} exact />
-          <Route path="/register" component={Register} exact />
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/app" element={
+              <IonTabs>
+                <IonRouterOutlet>
+                  <Route path="home" element={<ProtectedRoute component={Home} path="/app/home" />} />
+                  <Route path="profile" element={<ProtectedRoute component={Profile} path="/app/profile" />} />
+                  <Route path="search" element={<ProtectedRoute component={Search} path="/app/search" />} />
+                  <Route path="chat" element={<ProtectedRoute component={Chat} path="/app/chat" />} />
+                  <Route path="settings" element={<ProtectedRoute component={Settings} path="/app/settings" />} />
+                  <Route path="conversation/:id" element={<ProtectedRoute component={Conversation} path="/app/conversation/:id" />} />
+                  <Route path="edit-profile" element={<ProtectedRoute component={EditProfile} path="/app/edit-profile" />} />
+                  <Route path="user/:id" element={<ProtectedRoute component={UserProfile} path="/app/user/:id" />} />
+                  <Route path="" element={<Navigate to="/app/home" replace />} />
+                </IonRouterOutlet>
 
-          <Route path="/app">
-            <IonTabs>
-              <IonRouterOutlet>
-                <ProtectedRoute path="/app/home" component={Home} exact />
-                <ProtectedRoute path="/app/profile" component={Profile} exact />
-                <ProtectedRoute path="/app/search" component={Search} exact />
-                <ProtectedRoute path="/app/chat" component={Chat} exact />
-                <ProtectedRoute path="/app/settings" component={Settings} exact />
-                <ProtectedRoute path="/app/conversation/:id" component={Conversation} exact />
-                <ProtectedRoute path="/app/edit-profile" component={EditProfile} exact />
-                <ProtectedRoute path="/app/photo/:id" component={PhotoView} exact />
-                <ProtectedRoute path="/app/user/:id" component={UserProfile} exact />
-                <Route exact path="/app">
-                  <Redirect to="/app/home" />
-                </Route>
-              </IonRouterOutlet>
+                <IonTabBar slot="bottom" className="app-tab-bar">
+                  <IonTabButton tab="home" href="/app/home">
+                    <IonIcon icon={people} />
+                    <IonLabel>Feed</IonLabel>
+                  </IonTabButton>
+                  <IonTabButton tab="search" href="/app/search">
+                    <IonIcon icon={search} />
+                    <IonLabel>Search</IonLabel>
+                  </IonTabButton>
+                  <IonTabButton
+                    tab="capture"
+                    onClick={() => setShowCameraModal(true)}
+                    className="capture-tab"
+                    disabled={isOffline}
+                  >
+                    <IonIcon icon={camera} className="capture-icon" />
+                  </IonTabButton>
+                  <IonTabButton tab="chat" href="/app/chat">
+                    <IonIcon icon={chatbubble} />
+                    <IonLabel>Chat</IonLabel>
+                  </IonTabButton>
+                  <IonTabButton tab="profile" href="/app/profile">
+                    <IonIcon icon={image} />
+                    <IonLabel>Profile</IonLabel>
+                  </IonTabButton>
+                </IonTabBar>
+              </IonTabs>
+            } />
+          </Routes>
 
-              <IonTabBar slot="bottom" className="app-tab-bar">
-                <IonTabButton tab="home" href="/app/home">
-                  <IonIcon aria-hidden="true" icon={people} />
-                  <IonLabel>Feed</IonLabel>
-                </IonTabButton>
-                <IonTabButton tab="search" href="/app/search">
-                  <IonIcon aria-hidden="true" icon={search} />
-                  <IonLabel>Search</IonLabel>
-                </IonTabButton>
-                <IonTabButton
-                  tab="capture"
-                  onClick={() => setShowCameraModal(true)}
-                  className="capture-tab"
-                  disabled={isOffline}
-                >
-                  <div className="capture-button-wrapper">
-                    <IonIcon aria-hidden="true" icon={camera} className="capture-icon" />
-                  </div>
-                </IonTabButton>
-                <IonTabButton tab="chat" href="/app/chat">
-                  <IonIcon aria-hidden="true" icon={chatbubble} />
-                  <IonLabel>Chat</IonLabel>
-                </IonTabButton>
-                <IonTabButton tab="profile" href="/app/profile">
-                  <IonIcon aria-hidden="true" icon={image} />
-                  <IonLabel>Profile</IonLabel>
-                </IonTabButton>
-              </IonTabBar>
-            </IonTabs>
+          <IonModal isOpen={showCameraModal} onDidDismiss={() => setShowCameraModal(false)} className="camera-modal">
+            <CameraView onPhotoTaken={handlePhotoTaken} onClose={() => setShowCameraModal(false)} />
+          </IonModal>
 
-            {/* Camera Modal */}
-            <IonModal isOpen={showCameraModal} onDidDismiss={() => setShowCameraModal(false)} className="camera-modal">
-              <CameraView onPhotoTaken={handlePhotoTaken} onClose={() => setShowCameraModal(false)} />
-            </IonModal>
-
-            {/* Post Composer */}
-            <IonModal
-              isOpen={showComposer}
-              onDidDismiss={() => {
-                setShowComposer(false);
-                setCapturedImage(null);
-              }}
-              className="composer-modal"
-            >
+          <IonModal isOpen={showComposer} onDidDismiss={() => setShowComposer(false)} className="composer-modal">
+            {capturedImage && (
               <PostComposer
-                imageUrl={capturedImage || ""}
+                imageUrl={capturedImage}
                 onPublish={handlePublishPost}
                 onCancel={() => {
                   setShowComposer(false);
                   setCapturedImage(null);
                 }}
               />
-            </IonModal>
-          </Route>
+            )}
+          </IonModal>
 
-          <Route exact path="/">
-            <Redirect to="/app/home" />
-          </Route>
+          <IonToast
+            isOpen={showOfflineToast}
+            onDidDismiss={() => setShowOfflineToast(false)}
+            message={offlineToastMessage}
+            duration={3000}
+            position="bottom"
+          />
         </IonReactRouter>
-
-        {/* Offline Toast */}
-        <IonToast
-          isOpen={showOfflineToast}
-          onDidDismiss={() => setShowOfflineToast(false)}
-          message={offlineToastMessage}
-          position="top"
-          duration={3000}
-          color={isOffline ? "warning" : "success"}
-          buttons={[
-            {
-              text: "OK",
-              role: "cancel",
-            },
-          ]}
-        />
       </IonApp>
     </AuthProvider>
   );

@@ -17,19 +17,24 @@ export default defineConfig({
     port: 8100,
     strictPort: true,
     hmr: {
-      // Permet le HMR (Hot Module Replacement) sur Docker
       clientPort: 8100,
       host: "localhost",
+      protocol: "ws",
+      timeout: 30000
     },
     cors: true,
     proxy: {
-      // Configurer un proxy pour éviter les problèmes CORS
       "/api": {
-        target: "http://192.168.1.11",
+        target: "http://localhost:3000",
         changeOrigin: true,
         secure: false,
-      },
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }
     },
+    watch: {
+      usePolling: true,
+      interval: 1000
+    }
   },
   build: {
     minify: "terser",

@@ -1,176 +1,100 @@
-# BeUnreal - Application Mobile Hybride
+# BeUnreal Mobile App
 
-BeUnreal est une application mobile hybride inspirée de BeReal, développée avec Ionic React et Capacitor. Elle permet aux utilisateurs de prendre des photos, les partager, suivre d'autres utilisateurs, et communiquer via messagerie.
+Application mobile de partage de moments en temps réel, construite avec Ionic et React.
 
-## Fonctionnalités
+## Configuration de l'environnement
 
-### Authentification
+1. Créez un fichier `.env` à la racine du projet avec les variables suivantes :
 
-- Connexion & Inscription
-- Gestion de session utilisateur
-- Profils utilisateurs
+```env
+# Configuration de l'API
+VITE_API_URL=http://localhost:3000/api
 
-### Flux Social
+# Clé API Google Maps
+VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
 
-- Feed des publications des utilisateurs suivis
-- Prise de photo avec appareil photo du device
-- Ajout de légendes aux photos
-- Likes et commentaires
+# Configuration de l'environnement
+NODE_ENV=development
 
-### Profil Utilisateur
-
-- Photo de profil personnalisable
-- Affichage des publications de l'utilisateur
-- Statistiques de followers/following
-
-### Recherche & Découverte
-
-- Recherche d'utilisateurs
-- Suggestions d'utilisateurs à suivre
-- Système follow/unfollow
-
-### Messagerie
-
-- Conversations directes entre utilisateurs
-- Création de groupes de discussion
-- Envoi de textes et photos dans les conversations
-
-### Design & UX
-
-- Interface noir et blanc
-- Support du mode sombre
-- Design responsive
-- Navigation fluide entre écrans
-
-## Architecture
-
-### Structure des dossiers
-
-```
-src/
-├── components/        # Composants UI réutilisables
-├── contexts/          # Contextes React pour le state global
-├── hooks/             # Hooks personnalisés
-├── pages/             # Pages/écrans de l'application
-├── services/          # Services pour l'API et le stockage local
-└── theme/             # Variables CSS et configuration du thème
+# Configuration de l'application
+VITE_APP_NAME=BeUnreal
+VITE_APP_VERSION=1.0.0
+VITE_APP_DESCRIPTION="BeUnreal - Partagez vos moments en temps réel"
 ```
 
-### Technologies utilisées
+2. Obtenez une clé API Google Maps :
+   - Allez sur la [Console Google Cloud](https://console.cloud.google.com)
+   - Créez un nouveau projet ou sélectionnez un projet existant
+   - Activez l'API Maps JavaScript et l'API Places
+   - Créez une clé API avec les restrictions appropriées
+   - Copiez la clé API dans votre fichier `.env`
 
-- **Ionic Framework**: UI components
-- **React**: Bibliothèque UI
-- **Capacitor**: API natives (Camera, Preferences, Notifications)
-- **TypeScript**: Type safety
-- **CSS Modules**: Styling
-
-## Services
-
-### AuthService
-
-Gère tout ce qui concerne l'authentification, les profils utilisateurs et la gestion des relations entre utilisateurs (follow/unfollow).
-
-### PostService
-
-S'occupe de la création, récupération et interaction avec les publications (posts).
-
-### ChatService
-
-Gère la messagerie entre utilisateurs, conversations individuelles et de groupe.
-
-### CameraService
-
-Interface avec l'API Camera de Capacitor pour la capture photo.
-
-### StorageService
-
-Stockage local des données utilisateur et des préférences.
-
-### NotificationService
-
-Gestion des notifications locales quotidiennes.
-
-## Pages principales
-
-### Login & Register
-
-Écrans d'authentification permettant aux utilisateurs de créer un compte ou de se connecter.
-
-### Home (Feed)
-
-Affiche les publications des utilisateurs suivis. Permet de prendre des photos et de voir le contenu des autres.
-
-### Search
-
-Permet de rechercher d'autres utilisateurs et de les suivre.
-
-### Profile
-
-Affiche le profil de l'utilisateur avec ses photos et statistiques. Remplace l'ancienne page Gallery.
-
-### Chat
-
-Système de messagerie pour communiquer avec d'autres utilisateurs.
-
-### Settings
-
-Paramètres de l'application et notifications.
-
-## Installation et exécution
-
-### Prérequis
-
-- Node.js 14+
-- NPM ou Yarn
-- Ionic CLI (`npm install -g @ionic/cli`)
-
-### Installation
+## Installation
 
 ```bash
-# Cloner le dépôt
-git clone [URL_DU_REPO]
-cd beunreal
-
 # Installer les dépendances
 npm install
 
-# Démarrer en mode développement
-ionic serve
+# Démarrer le serveur de développement
+npm run dev
+
+# Construire pour la production
+npm run build
+
+# Lancer sur Android
+npm run android
 ```
 
-### Build pour plateformes mobiles
+## Fonctionnalités
 
-```bash
-# Ajouter la plateforme Android
-ionic cap add android
+- Partage de photos et vidéos en temps réel
+- Géolocalisation des stories
+- Interface utilisateur moderne et intuitive
+- Support du mode sombre
+- Notifications en temps réel
+- Gestion des amis et des abonnements
 
-# Ajouter la plateforme iOS
-ionic cap add ios
+## Structure du projet
 
-# Build du projet
-ionic cap build android
-ionic cap build ios
+```
+mobile-app-service/
+├── src/
+│   ├── components/     # Composants React réutilisables
+│   ├── pages/         # Pages de l'application
+│   ├── services/      # Services et logique métier
+│   ├── contexts/      # Contextes React
+│   ├── config/        # Configuration
+│   ├── assets/        # Ressources statiques
+│   └── theme/         # Thèmes et styles
+├── public/            # Fichiers publics
+└── android/          # Configuration Android
 ```
 
-## Notes d'implémentation
+## Développement
 
-### Frontend uniquement
+### Prérequis
 
-Cette version ne contient que la partie frontend. Le backend devra être implémenté séparément, mais la structure a été conçue pour faciliter cette intégration future.
+- Node.js 16+
+- npm 7+
+- Android Studio (pour le développement Android)
+- JDK 11+
 
-### Mockup des données
+### Scripts disponibles
 
-Les données sont actuellement mockées localement via Capacitor Preferences. Dans une version de production, toutes les fonctions des services devront être modifiées pour appeler des API REST.
+- `npm run dev` : Démarre le serveur de développement
+- `npm run build` : Construit l'application pour la production
+- `npm run android` : Lance l'application sur un appareil/émulateur Android
+- `npm run test` : Lance les tests
+- `npm run lint` : Vérifie le code avec ESLint
 
-### Responsive design
+## Contribution
 
-L'interface est optimisée pour les mobiles mais reste utilisable sur desktop pour faciliter le développement.
+1. Fork le projet
+2. Créez une branche pour votre fonctionnalité (`git checkout -b feature/amazing-feature`)
+3. Committez vos changements (`git commit -m 'Add some amazing feature'`)
+4. Poussez vers la branche (`git push origin feature/amazing-feature`)
+5. Ouvrez une Pull Request
 
-## Améliorations futures
+## Licence
 
-- Intégration avec un backend (Firebase, Node.js, etc.)
-- Tests unitaires et E2E
-- Optimisations de performance
-- Localisation multi-langue
-- Push notifications
-- Mode hors-ligne
+Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.

@@ -1,0 +1,44 @@
+.map-container {
+  width: 100%;
+  height: calc(100vh - 200px);
+  position: relative;
+}
+
+.map-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: calc(100vh - 200px);
+  background-color: var(--ion-color-light);
+}
+
+.map-loading ion-spinner {
+  margin-bottom: 16px;
+}
+
+/* Styles pour les marqueurs de story */
+.story-marker {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--ion-color-primary);
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.story-marker img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Style pour le marqueur de position actuelle */
+.current-location-marker {
+  width: 20px;
+  height: 20px;
+  background-color: var(--ion-color-primary);
+  border: 2px solid white;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+} 

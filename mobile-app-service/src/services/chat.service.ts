@@ -22,7 +22,7 @@ export interface ConversationWithUsers extends Conversation {
   users: Array<{
     id: string;
     username: string;
-    profilePicture?: string | null; // Modifié pour accepter null
+    avatar?: string | null; // Modifié pour accepter null
   }>;
 }
 
@@ -40,7 +40,7 @@ export interface MessageWithUser extends Message {
   sender: {
     id: string;
     username: string;
-    profilePicture?: string | null; // Modifié pour accepter null
+    avatar?: string | null; // Modifié pour accepter null
   };
 }
 
@@ -149,7 +149,7 @@ export const getConversations = async (): Promise<ConversationWithUsers[]> => {
             {
               id: otherUser.id,
               username: otherUser.username,
-              profilePicture: otherUser.profilePicture,
+              avatar: otherUser.avatar,
             },
           ],
         };
@@ -202,7 +202,7 @@ export const getConversationById = async (conversationId: string): Promise<Conve
         users: otherUsers.map((user) => ({
           id: user.id,
           username: user.username,
-          profilePicture: user.profilePicture,
+          avatar: user.avatar,
         })),
       };
     } else {
@@ -231,7 +231,7 @@ export const getConversationById = async (conversationId: string): Promise<Conve
           {
             id: otherUser.id,
             username: otherUser.username,
-            profilePicture: otherUser.profilePicture,
+            avatar: otherUser.avatar,
           },
         ],
       };
@@ -277,7 +277,7 @@ export const getOrCreateConversation = async (userId: string): Promise<Conversat
           {
             id: otherUser.id,
             username: otherUser.username,
-            profilePicture: otherUser.profilePicture,
+            avatar: otherUser.avatar,
           },
         ],
       };
@@ -330,7 +330,7 @@ export const getOrCreateConversation = async (userId: string): Promise<Conversat
         {
           id: otherUser.id,
           username: otherUser.username,
-          profilePicture: otherUser.profilePicture,
+          avatar: otherUser.avatar,
         },
       ],
     };
@@ -410,7 +410,7 @@ export const createGroupConversation = async (
       users: otherUsers.map((user) => ({
         id: user.id,
         username: user.username,
-        profilePicture: user.profilePicture,
+        avatar: user.avatar,
       })),
     };
   } catch (error) {
@@ -529,7 +529,7 @@ export const sendMessage = async (
       sender: {
         id: currentUser.id,
         username: currentUser.username,
-        profilePicture: currentUser.profilePicture,
+        avatar: currentUser.avatar,
       },
     };
   } catch (error) {
@@ -608,9 +608,11 @@ const addPendingMessage = async (
 /**
  * Get messages for a conversation
  * @param conversationId Conversation ID
+ * @param limit Number of messages to retrieve
+ * @param offset Offset from the start of the conversation
  * @returns Array of messages with sender data
  */
-export const getMessages = async (conversationId: string): Promise<MessageWithUser[]> => {
+export const getMessages = async (conversationId: string, limit: number = 50, offset: number = 0): Promise<MessageWithUser[]> => {
   try {
     const currentUser = await getCurrentUser();
 
@@ -628,15 +630,11 @@ export const getMessages = async (conversationId: string): Promise<MessageWithUs
     // Si en ligne, essayer de récupérer les messages depuis le serveur
     if (isOnline()) {
       try {
-        const token = await getAuthToken();
-
         // Déterminer si c'est une conversation directe ou un groupe
         if (conversation.isGroup) {
           // Groupe
           await fetchApi(API_ENDPOINTS.MESSAGES.GROUP(conversationId), {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            params: { limit, offset },
           });
         } else {
           // Direct - trouver l'autre utilisateur
@@ -647,9 +645,7 @@ export const getMessages = async (conversationId: string): Promise<MessageWithUs
           }
 
           await fetchApi(API_ENDPOINTS.MESSAGES.DIRECT(recipientId), {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            params: { limit, offset },
           });
         }
 
@@ -688,12 +684,12 @@ export const getMessages = async (conversationId: string): Promise<MessageWithUs
           ? {
               id: sender.id,
               username: sender.username,
-              profilePicture: sender.profilePicture,
+              avatar: sender.avatar,
             }
           : {
               id: message.senderId,
               username: "Unknown User",
-              profilePicture: undefined,
+              avatar: null,
             },
       };
     });
@@ -779,9 +775,6 @@ export const syncPendingMessages = async (): Promise<void> => {
     const pendingMessages: PendingMessage[] = JSON.parse(result.value);
     if (pendingMessages.length === 0) return;
 
-    const token = await getAuthToken();
-    if (!token) return;
-
     const successfulMessages: string[] = [];
 
     for (const message of pendingMessages) {
@@ -791,27 +784,19 @@ export const syncPendingMessages = async (): Promise<void> => {
           // Message de groupe
           await fetchApi(API_ENDPOINTS.MESSAGES.GROUP(message.recipientId), {
             method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
+            body: {
               content: message.content,
               media: message.imageUrl ? { url: message.imageUrl } : null,
-            }),
+            },
           });
         } else {
           // Message direct
           await fetchApi(API_ENDPOINTS.MESSAGES.DIRECT(message.recipientId), {
             method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
+            body: {
               content: message.content,
               media: message.imageUrl ? { url: message.imageUrl } : null,
-            }),
+            },
           });
         }
 
