@@ -2,7 +2,7 @@ FROM node:23-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y wget
+RUN apt-get update && apt-get install -y wget dos2unix
 
 RUN npm install -g @ionic/cli
 
@@ -10,9 +10,9 @@ COPY package.json package-lock.json* ./
 RUN npm ci
 
 COPY . .
-COPY start.sh /app/start.sh
-RUN chmod +x /app/start.sh
+# Convertir les fins de ligne Windows en Unix et rendre le script exécutable
+RUN dos2unix /app/start.sh && chmod +x /app/start.sh
 
 EXPOSE 8100
 
-CMD ["/app/start.sh"]
+CMD ["/bin/bash", "/app/start.sh"]

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import * as React from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   IonAvatar,
   IonIcon,
@@ -34,11 +35,20 @@ interface StoryCirclesProps {
   onStorySelect: (story: StoryWithUser) => void;
 }
 
+interface UserStoryCircle {
+  userId: string;
+  username: string;
+  profilePicture: string | null;
+  latestStory: StoryWithUser;
+  storyCount: number;
+  hasUnviewedStories: boolean;
+}
+
 const StoryCircles: React.FC<StoryCirclesProps> = ({ stories, onStorySelect }) => {
   const { user: currentUser } = useAuthContext();
   
   // Group stories by user
-  const groupedStories = React.useMemo(() => {
+  const groupedStories = useMemo(() => {
     const grouped: Record<string, StoryWithUser[]> = {};
     
     stories.forEach(story => {
@@ -58,7 +68,8 @@ const StoryCircles: React.FC<StoryCirclesProps> = ({ stories, onStorySelect }) =
   
   // Get user story circles - one circle per user with their latest story
   const userStoryCircles = React.useMemo(() => {
-    return Object.values(groupedStories).map(userStories => {
+    return Object.values(groupedStories).map((value: unknown) => {
+      const userStories = value as StoryWithUser[];
       // Get the most recent story for the user
       const latestStory = userStories[0];
       // Count how many stories this user has
@@ -73,7 +84,7 @@ const StoryCircles: React.FC<StoryCirclesProps> = ({ stories, onStorySelect }) =
         latestStory,
         storyCount,
         hasUnviewedStories,
-      };
+      } as UserStoryCircle;
     });
   }, [groupedStories]);
   
@@ -104,29 +115,32 @@ const StoryCircles: React.FC<StoryCirclesProps> = ({ stories, onStorySelect }) =
     <div className="story-circles-container">
       {/* Horizontal scrollable story circles */}
       <div className="story-circles-scrollable">
-        {userStoryCircles.map(({ userId, username, profilePicture, latestStory, storyCount, hasUnviewedStories }) => (
-          <div key={userId} className="story-circle-item" onClick={() => onStorySelect(latestStory)}>
-            <div className={`story-avatar-border ${hasUnviewedStories ? 'unviewed' : 'viewed'}`}>
-              <IonAvatar className="story-avatar">
-                {profilePicture ? (
-                  <img src={profilePicture} alt={username} />
-                ) : (
-                  <div className="default-avatar">
-                    <IonIcon icon={personOutline} />
-                  </div>
+        {userStoryCircles.map((circle: UserStoryCircle) => {
+          const { userId, username, profilePicture, latestStory, storyCount, hasUnviewedStories } = circle;
+          return (
+            <div key={userId} className="story-circle-item" onClick={() => onStorySelect(latestStory)}>
+              <div className={`story-avatar-border ${hasUnviewedStories ? 'unviewed' : 'viewed'}`}>
+                <IonAvatar className="story-avatar">
+                  {profilePicture ? (
+                    <img src={profilePicture} alt={username} />
+                  ) : (
+                    <div className="default-avatar">
+                      <IonIcon icon={personOutline} />
+                    </div>
+                  )}
+                </IonAvatar>
+                {storyCount > 1 && (
+                  <IonBadge className="story-count-badge" color={hasUnviewedStories ? "primary" : "medium"}>
+                    {storyCount}
+                  </IonBadge>
                 )}
-              </IonAvatar>
-              {storyCount > 1 && (
-                <IonBadge className="story-count-badge" color={hasUnviewedStories ? "primary" : "medium"}>
-                  {storyCount}
-                </IonBadge>
-              )}
+              </div>
+              <IonText className="story-username">
+                <p>{username}</p>
+              </IonText>
             </div>
-            <IonText className="story-username">
-              <p>{username}</p>
-            </IonText>
-          </div>
-        ))}
+          );
+        })}
       </div>
       
       {/* Story cards (larger previews) */}

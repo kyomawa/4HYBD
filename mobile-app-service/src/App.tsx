@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, type ReactNode } from "react";
 import {
   IonApp,
   IonRouterOutlet,
@@ -12,9 +12,11 @@ import {
   IonLoading,
   IonModal,
   IonToast,
+  type IonIconCustomEvent,
+  type IonTabButtonCustomEvent,
 } from "@ionic/react";
 import { IonReactRouter } from "@ionic/react-router";
-import { Route, Redirect } from "react-router";
+import { Route, Redirect, type RouteComponentProps } from "react-router";
 import { camera, image, search, chatbubble, people } from "ionicons/icons";
 import { isAuthenticated } from "./services/auth.service";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -65,7 +67,7 @@ setupIonicReact();
 
 // Protected Route component
 const ProtectedRoute: React.FC<{
-  component: React.ComponentType<any>;
+  component: React.ComponentType<RouteComponentProps>;
   exact?: boolean;
   path: string;
 }> = ({ component: Component, ...rest }) => {
@@ -95,7 +97,7 @@ const ProtectedRoute: React.FC<{
   return (
     <Route
       {...rest}
-      render={(props) =>
+      render={(props: RouteComponentProps) =>
         isAuthed ? <Component {...props} /> : <Redirect to={{ pathname: "/login", state: { from: props.location } }} />
       }
     />
@@ -185,9 +187,9 @@ const App: React.FC = () => {
       <IonApp>
         <div className="app-loading-container">
           <div className="app-loading-content">
-            <img src="assets/logo.png" alt="BeUnreal Logo" className="app-logo" />
+            <img src="./assets/logo.png" alt="BeUnreal Logo" className="app-logo" />
             <h1>BeUnreal</h1>
-            <IonSpinner name="crescent" />
+            <IonSpinner name="crescent" color="primary" />
             <p>Loading your experience...</p>
           </div>
         </div>
@@ -199,10 +201,10 @@ const App: React.FC = () => {
     <AuthProvider>
       <IonApp>
         <IonReactRouter>
-          <Route path="/login" component={Login} exact />
-          <Route path="/register" component={Register} exact />
+          <Route path="/login" render={(props: RouteComponentProps) => <Login {...props} />} exact />
+          <Route path="/register" render={(props: RouteComponentProps) => <Register {...props} />} exact />
 
-          <Route path="/app">
+          <Route path="/app" render={() => (
             <IonTabs>
               <IonRouterOutlet>
                 <ProtectedRoute path="/app/home" component={Home} exact />
@@ -221,11 +223,11 @@ const App: React.FC = () => {
 
               <IonTabBar slot="bottom" className="app-tab-bar">
                 <IonTabButton tab="home" href="/app/home">
-                  <IonIcon aria-hidden="true" icon={people} />
+                  <IonIcon icon={people} />
                   <IonLabel>Feed</IonLabel>
                 </IonTabButton>
                 <IonTabButton tab="search" href="/app/search">
-                  <IonIcon aria-hidden="true" icon={search} />
+                  <IonIcon icon={search} />
                   <IonLabel>Search</IonLabel>
                 </IonTabButton>
                 <IonTabButton
@@ -234,66 +236,45 @@ const App: React.FC = () => {
                   className="capture-tab"
                   disabled={isOffline}
                 >
-                  <div className="capture-button-wrapper">
-                    <IonIcon aria-hidden="true" icon={camera} className="capture-icon" />
-                  </div>
+                  <IonIcon icon={camera} className="capture-icon" />
                 </IonTabButton>
                 <IonTabButton tab="chat" href="/app/chat">
-                  <IonIcon aria-hidden="true" icon={chatbubble} />
+                  <IonIcon icon={chatbubble} />
                   <IonLabel>Chat</IonLabel>
                 </IonTabButton>
                 <IonTabButton tab="profile" href="/app/profile">
-                  <IonIcon aria-hidden="true" icon={image} />
+                  <IonIcon icon={image} />
                   <IonLabel>Profile</IonLabel>
                 </IonTabButton>
               </IonTabBar>
             </IonTabs>
+          )} />
 
-            {/* Camera Modal */}
-            <IonModal isOpen={showCameraModal} onDidDismiss={() => setShowCameraModal(false)} className="camera-modal">
-              <CameraView onPhotoTaken={handlePhotoTaken} onClose={() => setShowCameraModal(false)} />
-            </IonModal>
+          <IonModal isOpen={showCameraModal} onDidDismiss={() => setShowCameraModal(false)} className="camera-modal">
+            <CameraView onPhotoTaken={handlePhotoTaken} onClose={() => setShowCameraModal(false)} />
+          </IonModal>
 
-            {/* Post Composer */}
-            <IonModal
-              isOpen={showComposer}
-              onDidDismiss={() => {
-                setShowComposer(false);
-                setCapturedImage(null);
-              }}
-              className="composer-modal"
-            >
+          <IonModal isOpen={showComposer} onDidDismiss={() => setShowComposer(false)} className="composer-modal">
+            {capturedImage && (
               <PostComposer
-                imageUrl={capturedImage || ""}
+                imageUrl={capturedImage}
                 onPublish={handlePublishPost}
                 onCancel={() => {
                   setShowComposer(false);
                   setCapturedImage(null);
                 }}
               />
-            </IonModal>
-          </Route>
+            )}
+          </IonModal>
 
-          <Route exact path="/">
-            <Redirect to="/app/home" />
-          </Route>
+          <IonToast
+            isOpen={showOfflineToast}
+            onDidDismiss={() => setShowOfflineToast(false)}
+            message={offlineToastMessage}
+            duration={3000}
+            position="bottom"
+          />
         </IonReactRouter>
-
-        {/* Offline Toast */}
-        <IonToast
-          isOpen={showOfflineToast}
-          onDidDismiss={() => setShowOfflineToast(false)}
-          message={offlineToastMessage}
-          position="top"
-          duration={3000}
-          color={isOffline ? "warning" : "success"}
-          buttons={[
-            {
-              text: "OK",
-              role: "cancel",
-            },
-          ]}
-        />
       </IonApp>
     </AuthProvider>
   );

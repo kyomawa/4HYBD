@@ -15,9 +15,11 @@ import {
   IonLabel,
   IonAlert,
   IonBadge,
+  IonText,
   useIonToast,
   TextareaCustomEvent,
   ToastOptions,
+  ToggleCustomEvent,
 } from "@ionic/react";
 import {
   closeOutline,
@@ -217,7 +219,7 @@ const StoryCapture: React.FC<StoryCaptureProps> = ({ photoData, onCancel, onSucc
               </IonLabel>
               <IonToggle
                 checked={includeLocation}
-                onIonChange={(e) => handleLocationToggle(e.detail.checked)}
+                onIonChange={(e: ToggleCustomEvent) => handleLocationToggle(e.detail.checked)}
                 slot="end"
               />
             </IonItem>

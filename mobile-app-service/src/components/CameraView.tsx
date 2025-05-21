@@ -1,18 +1,30 @@
-import React, { useState, useEffect } from "react";
+import * as React from "react";
+import { useState, useRef, useEffect } from "react";
 import {
-  IonHeader,
-  IonToolbar,
-  IonTitle,
-  IonButtons,
+  IonContent,
   IonButton,
   IonIcon,
-  IonContent,
+  IonHeader,
+  IonToolbar,
+  IonButtons,
   IonSpinner,
-  IonText,
+  IonFooter,
+  IonFab,
+  IonFabButton,
+  IonAlert,
+  IonToast,
 } from "@ionic/react";
-import { close } from "ionicons/icons";
-import { takePicture } from "../services/camera.service";
-import { CameraResultType, CameraSource } from "@capacitor/camera";
+import {
+  close,
+  camera,
+  cameraReverse,
+  flashOff,
+  flash,
+  image,
+} from "ionicons/icons";
+import { Camera, CameraResultType, CameraDirection } from "@capacitor/camera";
+import { Photo } from "@capacitor/camera/dist/esm/definitions";
+import { isLocationEnabled, getCurrentLocation } from "../services/location.service";
 import "./CameraView.css";
 
 interface CameraViewProps {
@@ -21,78 +33,170 @@ interface CameraViewProps {
 }
 
 const CameraView: React.FC<CameraViewProps> = ({ onPhotoTaken, onClose }) => {
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Ouvrir directement l'appareil photo dès le chargement du composant
+  const [flashEnabled, setFlashEnabled] = useState<boolean>(false);
+  const [cameraDirection, setCameraDirection] = useState<CameraDirection>(CameraDirection.Rear);
+  const [isTakingPhoto, setIsTakingPhoto] = useState<boolean>(false);
+  const [showLocationAlert, setShowLocationAlert] = useState<boolean>(false);
+  const [showErrorToast, setShowErrorToast] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  
   useEffect(() => {
-    openNativeCamera();
-  }, []);
-
-  const openNativeCamera = async () => {
+    initCamera();
+    
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+      }
+    };
+  }, [cameraDirection]);
+  
+  const initCamera = async () => {
     try {
-      setIsLoading(true);
-      setError(null);
-
-      const photo = await takePicture({
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Camera not supported in this browser");
+      }
+      
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+      }
+      
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: cameraDirection === CameraDirection.Front ? "user" : "environment",
+        },
+        audio: false,
+      });
+      
+      streamRef.current = stream;
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    } catch (error) {
+      console.error("Error initializing camera:", error);
+      setErrorMessage("Camera access failed. Please check permissions.");
+      setShowErrorToast(true);
+    }
+  };
+  
+  const takePicture = async () => {
+    try {
+      setIsTakingPhoto(true);
+      
+      const locationEnabled = await isLocationEnabled();
+      
+      let locationPromise = null;
+      if (locationEnabled) {
+        locationPromise = getCurrentLocation();
+      }
+      
+      const photo: Photo = await Camera.getPhoto({
         quality: 90,
         allowEditing: false,
         resultType: CameraResultType.Uri,
-        source: CameraSource.Camera,
-        width: 1200,
-        height: 1600,
-        correctOrientation: true,
-        presentationStyle: "fullscreen",
-        saveToGallery: false,
+        direction: cameraDirection,
+        promptLabelHeader: "",
+        promptLabelCancel: "",
+        promptLabelPhoto: "",
+        promptLabelPicture: "",
       });
-
-      if (photo && photo.webPath) {
+      
+      if (locationPromise) {
+        const location = await locationPromise;
+        
+        if (!location) {
+          setShowLocationAlert(true);
+        }
+      }
+      
+      if (photo.webPath) {
         onPhotoTaken(photo.webPath);
-      } else {
-        // Si aucune photo n'est prise (annulation), fermer le modal
-        onClose();
       }
     } catch (error) {
       console.error("Error taking photo:", error);
-      setError("Échec de la prise de photo. Veuillez vérifier les permissions de la caméra.");
+      setErrorMessage("Failed to take photo. Please try again.");
+      setShowErrorToast(true);
     } finally {
-      setIsLoading(false);
+      setIsTakingPhoto(false);
     }
   };
-
+  
+  const toggleFlash = () => {
+    setFlashEnabled(!flashEnabled);
+    
+    if (videoRef.current) {
+      if (!flashEnabled) {
+        videoRef.current.style.filter = "brightness(1.5)";
+      } else {
+        videoRef.current.style.filter = "brightness(1)";
+      }
+    }
+  };
+  
+  const toggleCameraDirection = () => {
+    setCameraDirection(
+      cameraDirection === CameraDirection.Rear
+        ? CameraDirection.Front
+        : CameraDirection.Rear
+    );
+  };
+  
   return (
     <>
       <IonHeader>
-        <IonToolbar>
+        <IonToolbar color="dark" className="camera-toolbar">
           <IonButtons slot="start">
-            <IonButton onClick={onClose} disabled={isLoading}>
-              <IonIcon icon={close} />
+            <IonButton fill="clear" color="light" onClick={onClose}>
+              <IonIcon icon={close} slot="icon-only" />
             </IonButton>
           </IonButtons>
-          <IonTitle>Caméra</IonTitle>
+          <IonButtons slot="end">
+            <IonButton fill="clear" color="light" onClick={toggleFlash}>
+              <IonIcon icon={flashEnabled ? flash : flashOff} slot="icon-only" />
+            </IonButton>
+          </IonButtons>
         </IonToolbar>
       </IonHeader>
-
-      <IonContent className="camera-view-content">
-        {isLoading ? (
-          <div className="camera-loading">
-            <IonSpinner name="crescent" />
-            <IonText>Ouverture de l'appareil photo...</IonText>
-          </div>
-        ) : error ? (
-          <div className="camera-error">
-            <IonText color="danger">{error}</IonText>
-            <IonButton onClick={openNativeCamera}>Réessayer</IonButton>
-          </div>
-        ) : (
-          <div className="camera-container" onClick={openNativeCamera}>
-            <div className="camera-instructions">
-              <IonText>Appuyez pour ouvrir l'appareil photo</IonText>
-              <IonButton onClick={openNativeCamera}>Ouvrir l'appareil photo</IonButton>
-            </div>
-          </div>
-        )}
+      
+      <IonContent fullscreen className="camera-content">
+        <div className="camera-container">
+          <video ref={videoRef} className="camera-preview" autoPlay playsInline muted />
+        </div>
       </IonContent>
+      
+      <IonFooter className="camera-footer">
+        <div className="camera-controls">
+          <IonButton fill="clear" color="light" onClick={toggleCameraDirection} className="camera-control-button">
+            <IonIcon icon={cameraReverse} slot="icon-only" />
+          </IonButton>
+          
+          <IonFabButton color="light" className="shutter-button" onClick={takePicture} disabled={isTakingPhoto}>
+            {isTakingPhoto ? <IonSpinner name="crescent" /> : <IonIcon icon={camera} />}
+          </IonFabButton>
+          
+          <div className="placeholder-button"></div>
+        </div>
+      </IonFooter>
+      
+      <IonAlert
+        isOpen={showLocationAlert}
+        onDidDismiss={() => setShowLocationAlert(false)}
+        header="Location Access"
+        message="Could not access your location. Location data won't be added to your photo."
+        buttons={['OK']}
+      />
+      
+      <IonToast
+        isOpen={showErrorToast}
+        onDidDismiss={() => setShowErrorToast(false)}
+        message={errorMessage}
+        duration={3000}
+        color="danger"
+      />
     </>
   );
 };

@@ -18,6 +18,7 @@ import {
   IonModal,
   IonBadge,
   IonAlert,
+  IonLabel,
   RefresherEventDetail,
   useIonRouter,
   SegmentCustomEvent,
@@ -59,7 +60,6 @@ const Home: React.FC = () => {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [showLocationAlert, setShowLocationAlert] = useState<boolean>(false);
 
-  // Load stories when component mounts or refreshes
   useEffect(() => {
     loadStories();
   }, []);
@@ -161,7 +161,7 @@ const Home: React.FC = () => {
           <p>Follow users or share your first story to see content here</p>
           <div className="empty-feed-actions">
             <IonButton fill="solid" onClick={() => setShowCameraModal(true)}>
-              <IonIcon slot="start" icon={camera} />
+              <IonIcon icon={camera} />
               Take Photo
             </IonButton>
             <IonButton fill="outline" routerLink="/app/search">
@@ -220,19 +220,10 @@ const Home: React.FC = () => {
           <StoryMap onStorySelect={handleStorySelected} onLocationError={handleLocationError} />
         )}
 
-        {/* Camera Button */}
-        <IonFab vertical="bottom" horizontal="center" slot="fixed" className="camera-fab">
-          <IonFabButton onClick={() => setShowCameraModal(true)}>
-            <IonIcon icon={camera} />
-          </IonFabButton>
-        </IonFab>
-
-        {/* Camera Modal */}
         <IonModal isOpen={showCameraModal} onDidDismiss={() => setShowCameraModal(false)} className="camera-modal">
           <CameraView onPhotoTaken={handlePhotoTaken} onClose={() => setShowCameraModal(false)} />
         </IonModal>
 
-        {/* Story Capture Modal */}
         <IonModal 
           isOpen={showStoryCapture} 
           onDidDismiss={() => {
@@ -253,7 +244,6 @@ const Home: React.FC = () => {
           )}
         </IonModal>
 
-        {/* Story Viewer Modal */}
         {selectedStory && (
           <StoryViewer
             story={selectedStory}
@@ -271,7 +261,6 @@ const Home: React.FC = () => {
           />
         )}
 
-        {/* Location Error Alert */}
         <IonAlert
           isOpen={showLocationAlert}
           onDidDismiss={() => setShowLocationAlert(false)}
