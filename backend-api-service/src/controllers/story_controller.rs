@@ -119,10 +119,8 @@ async fn create_story_with_media(
     req: HttpRequest,
     content_type: web::Header<ContentType>,
     body: Bytes,
-    query: Query<MediaStoryQueryParams>, // ✅ Nouveau paramètre
+    query: Query<MediaStoryQueryParams>,
 ) -> impl Responder {
-    println!("🚀 Starting story media upload process...");
-
     let jwt_payload = match get_authenticated_user(&req) {
         Ok(payload) => payload,
         Err(err_res) => return err_res,
@@ -131,35 +129,21 @@ async fn create_story_with_media(
     let content_type_str = content_type.to_string();
     let query_params = query.into_inner();
 
-    println!("👤 User ID: {}", jwt_payload.user_id);
-    println!("📋 Content Type: {}", content_type_str);
-    println!("📏 Body size: {} bytes", body.len());
-    println!(
-        "🌍 Location: [{}, {}]",
-        query_params.longitude, query_params.latitude
-    );
-
     // Validate file type
     if let Err(e) = file_service::validate_content_type(&content_type_str) {
-        println!("❌ Invalid content type: {}", e);
         let response = ApiResponse::error("Invalid content type", e);
         return HttpResponse::BadRequest().json(response);
     }
 
     // Validate file size
     if let Err(e) = file_service::validate_file_size(&content_type_str, body.len()) {
-        println!("❌ File size validation failed: {}", e);
         let response = ApiResponse::error("File size validation failed", e);
         return HttpResponse::BadRequest().json(response);
     }
 
-    println!("✅ Validations passed, starting file upload...");
-
     // Upload file to MinIO
     match file_service::upload_file(&body, &content_type_str).await {
         Ok(url) => {
-            println!("✅ File uploaded successfully to: {}", url);
-
             let media_type = if content_type_str.starts_with("image/") {
                 MediaType::Image
             } else {
@@ -178,7 +162,6 @@ async fn create_story_with_media(
                 duration,
             };
 
-            // ✅ Créer la location à partir des paramètres séparés
             let location = Location {
                 location_type: "Point".to_string(),
                 coordinates: [query_params.longitude, query_params.latitude],
@@ -186,17 +169,13 @@ async fn create_story_with_media(
 
             let story = CreateStory { media, location };
 
-            println!("💾 Saving story to database...");
-
             match story_service::create_story(&db, jwt_payload.user_id, story).await {
                 Ok(story) => {
-                    println!("✅ Story saved successfully!");
                     let response =
                         ApiResponse::success("Story with media created successfully", story);
                     HttpResponse::Created().json(response)
                 }
                 Err(e) => {
-                    println!("❌ Failed to save story: {}", e);
                     let response =
                         ApiResponse::error("Failed to create story with media", e.to_string());
                     HttpResponse::InternalServerError().json(response)
@@ -204,7 +183,6 @@ async fn create_story_with_media(
             }
         }
         Err(e) => {
-            println!("❌ File upload failed: {}", e);
             let response = ApiResponse::error("Failed to upload media", e.to_string());
             HttpResponse::InternalServerError().json(response)
         }

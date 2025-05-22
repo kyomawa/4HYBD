@@ -22,52 +22,69 @@ pub async fn get_friend_stories(
     let user_id_obj = ObjectId::from_str(&user_id)?;
     let collection: Collection<Story> = db.collection(COLLECTION_NAME);
 
-    let friends_collection = db.collection::<serde_json::Value>(FRIENDS_COLLECTION);
-    let friend_filter = doc! {
-        "$or": [
-            { "user_id": user_id_obj },
-            { "friend_id": user_id_obj }
-        ],
-        "status": "Accepted"
-    };
-
-    let cursor = friends_collection.find(friend_filter).await?;
-    let friends = cursor.try_collect::<Vec<serde_json::Value>>().await?;
-
-    let mut friend_ids = Vec::new();
-    for friend in friends {
-        if let Some(friend_id) = friend.get("user_id").and_then(|id| id.as_str()) {
-            if friend_id != user_id {
-                if let Ok(id) = ObjectId::from_str(friend_id) {
-                    friend_ids.push(id);
-                }
-            }
-        }
-
-        if let Some(friend_id) = friend.get("friend_id").and_then(|id| id.as_str()) {
-            if friend_id != user_id {
-                if let Ok(id) = ObjectId::from_str(friend_id) {
-                    friend_ids.push(id);
-                }
-            }
-        }
-    }
-
-    if friend_ids.is_empty() {
-        return Ok(Vec::new());
-    }
-
     let now = Utc::now();
-    let filter = doc! {
-        "user_id": { "$in": friend_ids },
-        "expires_at": { "$gt": now }
-    };
 
-    let cursor = collection
-        .find(filter)
-        .sort(doc! { "expires_at": -1 })
-        .await?;
-    let stories: Vec<Story> = cursor.try_collect().await?;
+    let pipeline = vec![
+        doc! {
+            "$lookup": {
+                "from": "friends",
+                "let": { "storyUserId": "$user_id" },
+                "pipeline": [
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$and": [
+                                    { "$eq": ["$status", "Accepted"] },
+                                    {
+                                        "$or": [
+                                            {
+                                                "$and": [
+                                                    { "$eq": ["$user_id", user_id_obj] },
+                                                    { "$eq": ["$friend_id", "$$storyUserId"] }
+                                                ]
+                                            },
+                                            {
+                                                "$and": [
+                                                    { "$eq": ["$friend_id", user_id_obj] },
+                                                    { "$eq": ["$user_id", "$$storyUserId"] }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "as": "friendship"
+            }
+        },
+        doc! {
+            "$match": {
+                "friendship": { "$ne": [] },
+                "expires_at": { "$gt": now }
+            }
+        },
+        doc! {
+            "$unset": "friendship"
+        },
+        doc! {
+            "$sort": {
+                "expires_at": -1
+            }
+        },
+        doc! {
+            "$limit": 100
+        },
+    ];
+
+    let mut cursor = collection.aggregate(pipeline).await?;
+    let mut stories = Vec::new();
+
+    while let Some(result) = cursor.try_next().await? {
+        let story: Story = bson::from_document(result)?;
+        stories.push(story);
+    }
 
     Ok(stories)
 }
@@ -85,24 +102,39 @@ pub async fn get_nearby_stories(
     let radius = params.radius.unwrap_or(5000.0);
     let now = Utc::now();
 
-    let filter = doc! {
-        "location": {
-            "$near": {
-                "$geometry": {
+    let pipeline = vec![
+        doc! {
+            "$geoNear": {
+                "near": {
                     "type": "Point",
                     "coordinates": [params.longitude, params.latitude]
                 },
-                "$maxDistance": radius
+                "distanceField": "distance",
+                "maxDistance": radius,
+                "spherical": true,
+                "query": {
+                    "expires_at": { "$gt": now }
+                }
             }
         },
-        "expires_at": { "$gt": now }
-    };
+        doc! {
+            "$sort": {
+                "distance": 1,  // Trier par distance croissante
+                "expires_at": -1 // Puis par date décroissante
+            }
+        },
+        doc! {
+            "$limit": 50  // Limiter le nombre de résultats
+        },
+    ];
 
-    let cursor = collection
-        .find(filter)
-        .sort(doc! { "expires_at": -1 })
-        .await?;
-    let stories: Vec<Story> = cursor.try_collect().await?;
+    let mut cursor = collection.aggregate(pipeline).await?;
+    let mut stories = Vec::new();
+
+    while let Some(result) = cursor.try_next().await? {
+        let story: Story = bson::from_document(result)?;
+        stories.push(story);
+    }
 
     Ok(stories)
 }
