@@ -3,6 +3,7 @@ use actix_web::{App, HttpServer, http, web};
 use controllers::routes;
 use db::Db;
 use extractor::deserialize_error_extractor;
+use services::file_service;
 
 mod controllers;
 mod db;
@@ -23,6 +24,14 @@ async fn main() -> std::io::Result<()> {
 
     let external_host_ip =
         std::env::var("EXTERNAL_HOST_IP").expect("Missing EXTERNAL_HOST_IP env.");
+
+    println!("🚀 Initializing MinIO bucket...");
+    if let Err(e) = file_service::create_bucket_if_not_exists().await {
+        println!("⚠️ Warning: Failed to initialize MinIO bucket: {}", e);
+        println!("📋 The application will continue, but file uploads may fail.");
+    }
+
+    println!("🌐 Starting HTTP server on 0.0.0.0:8080...");
 
     HttpServer::new(move || {
         let cors = Cors::default()

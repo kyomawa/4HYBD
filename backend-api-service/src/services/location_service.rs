@@ -60,23 +60,42 @@ pub async fn find_nearby_users(
     let radius = params.radius.unwrap_or(5000.0); // Default to 5km
     let limit = params.limit.unwrap_or(50);
 
-    let filter = doc! {
-        "_id": { "$ne": user_id },
-        "location": {
-            "$near": {
-                "$geometry": {
+    println!(
+        "🌍 Searching for users near coordinates: [{}, {}]",
+        params.longitude, params.latitude
+    );
+    println!("📏 Search radius: {} meters", radius);
+    println!("👤 Excluding user: {}", user_id);
+
+    let pipeline = vec![
+        doc! {
+            "$geoNear": {
+                "near": {
                     "type": "Point",
                     "coordinates": [params.longitude, params.latitude]
                 },
-                "$maxDistance": radius
+                "distanceField": "distance",
+                "maxDistance": radius,
+                "spherical": true,
+                "query": {
+                    "_id": { "$ne": user_id }
+                }
             }
-        }
-    };
+        },
+        doc! {
+            "$limit": limit
+        },
+    ];
 
-    let cursor = collection.find(filter).limit(limit).await?;
-    let users: Vec<User> = cursor.try_collect().await?;
+    let mut cursor = collection.aggregate(pipeline).await?;
+    let mut users = Vec::new();
 
+    while let Some(result) = cursor.try_next().await? {
+        let user: User = bson::from_document(result)?;
+        users.push(user);
+    }
+
+    println!("✅ Found {} nearby users", users.len());
     Ok(users)
 }
-
 // =============================================================================================================================

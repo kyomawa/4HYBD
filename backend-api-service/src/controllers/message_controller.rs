@@ -5,6 +5,7 @@ use actix_web::{
     web::{self, Bytes, Data, Json, Path, Query, ServiceConfig},
 };
 use mongodb::Database;
+use serde::Deserialize;
 
 use crate::{
     models::message_model::{CreateMessage, Media, MediaType, MessageQueryParams},
@@ -88,6 +89,11 @@ async fn send_direct_message(
 
 // =============================================================================================================================
 
+#[derive(Deserialize)]
+pub struct MediaQueryParams {
+    pub text_content: Option<String>,
+}
+
 #[post("/{recipient_id}/media")]
 async fn send_direct_message_with_media(
     db: Data<Database>,
@@ -95,7 +101,7 @@ async fn send_direct_message_with_media(
     recipient_id: Path<String>,
     content_type: web::Header<ContentType>,
     body: Bytes,
-    text_content: Query<Option<String>>,
+    query: Query<MediaQueryParams>,
 ) -> impl Responder {
     let jwt_payload = match get_authenticated_user(&req) {
         Ok(payload) => payload,
@@ -104,18 +110,18 @@ async fn send_direct_message_with_media(
 
     let recipient_id = recipient_id.into_inner();
     let content_type_str = content_type.to_string();
+    let query_params = query.into_inner();
 
     // Validate file type
-    if !content_type_str.starts_with("image/") && !content_type_str.starts_with("video/") {
-        let response = ApiResponse::error(
-            "Invalid content type",
-            "Only image and video files are allowed",
-        );
+    if let Err(e) = file_service::validate_content_type(&content_type_str) {
+        println!("❌ Invalid content type: {}", e);
+        let response = ApiResponse::error("Invalid content type", e);
         return HttpResponse::BadRequest().json(response);
     }
 
     // Validate file size
     if let Err(e) = file_service::validate_file_size(&content_type_str, body.len()) {
+        println!("❌ File size validation failed: {}", e);
         let response = ApiResponse::error("File size validation failed", e);
         return HttpResponse::BadRequest().json(response);
     }
@@ -138,14 +144,12 @@ async fn send_direct_message_with_media(
 
             let media = Media {
                 media_type,
-                url,
+                url: url.clone(),
                 duration,
             };
 
             let message = CreateMessage {
-                content: text_content
-                    .as_ref()
-                    .map_or_else(|| "".to_string(), |q| q.clone()),
+                content: query_params.text_content.unwrap_or_else(|| "".to_string()),
                 media: Some(media),
             };
 
@@ -243,8 +247,10 @@ async fn send_group_message_with_media(
     group_id: Path<String>,
     content_type: web::Header<ContentType>,
     body: Bytes,
-    text_content: Query<Option<String>>,
+    query: Query<MediaQueryParams>, // ✅ Utilisez le même type que pour les messages directs
 ) -> impl Responder {
+    println!("🚀 Starting group media upload process...");
+
     let jwt_payload = match get_authenticated_user(&req) {
         Ok(payload) => payload,
         Err(err_res) => return err_res,
@@ -252,25 +258,35 @@ async fn send_group_message_with_media(
 
     let group_id = group_id.into_inner();
     let content_type_str = content_type.to_string();
+    let query_params = query.into_inner(); // ✅ Utilisez la même structure
 
-    // Validate file type
-    if !content_type_str.starts_with("image/") && !content_type_str.starts_with("video/") {
-        let response = ApiResponse::error(
-            "Invalid content type",
-            "Only image and video files are allowed",
-        );
+    println!("👤 User ID: {}", jwt_payload.user_id);
+    println!("👥 Group ID: {}", group_id);
+    println!("📋 Content Type: {}", content_type_str);
+    println!("📏 Body size: {} bytes", body.len());
+    println!("💬 Text content: {:?}", query_params.text_content);
+
+    // ✅ Utilisez la nouvelle validation
+    if let Err(e) = file_service::validate_content_type(&content_type_str) {
+        println!("❌ Invalid content type: {}", e);
+        let response = ApiResponse::error("Invalid content type", e);
         return HttpResponse::BadRequest().json(response);
     }
 
     // Validate file size
     if let Err(e) = file_service::validate_file_size(&content_type_str, body.len()) {
+        println!("❌ File size validation failed: {}", e);
         let response = ApiResponse::error("File size validation failed", e);
         return HttpResponse::BadRequest().json(response);
     }
 
+    println!("✅ Validations passed, starting file upload...");
+
     // Upload file to MinIO
     match file_service::upload_file(&body, &content_type_str).await {
         Ok(url) => {
+            println!("✅ File uploaded successfully to: {}", url);
+
             // Create message with media
             let media_type = if content_type_str.starts_with("image/") {
                 MediaType::Image
@@ -286,26 +302,28 @@ async fn send_group_message_with_media(
 
             let media = Media {
                 media_type,
-                url,
+                url: url.clone(),
                 duration,
             };
 
             let message = CreateMessage {
-                content: text_content
-                    .as_ref()
-                    .map_or_else(|| "".to_string(), |q| q.clone()),
+                content: query_params.text_content.unwrap_or_else(|| "".to_string()), // ✅ Même logique
                 media: Some(media),
             };
+
+            println!("💾 Saving group message to database...");
 
             match message_service::send_group_message(&db, jwt_payload.user_id, group_id, message)
                 .await
             {
                 Ok(message) => {
+                    println!("✅ Group message saved successfully!");
                     let response =
                         ApiResponse::success("Group message with media sent successfully", message);
                     HttpResponse::Created().json(response)
                 }
                 Err(e) => {
+                    println!("❌ Failed to save group message: {}", e);
                     let response = ApiResponse::error(
                         "Failed to send group message with media",
                         e.to_string(),
@@ -315,6 +333,7 @@ async fn send_group_message_with_media(
             }
         }
         Err(e) => {
+            println!("❌ File upload failed: {}", e);
             let response = ApiResponse::error("Failed to upload media", e.to_string());
             HttpResponse::InternalServerError().json(response)
         }

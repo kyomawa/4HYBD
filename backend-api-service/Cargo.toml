@@ -20,3 +20,5 @@ bcrypt = "0.17"
 reqwest = { version = "0.12.15", features = ["json"] }
 uuid = { version = "1.16.0", features = ["v4"] }
 actix-cors = "0.7.1"
+aws-sdk-s3 = "1.88.0"
+aws-config = "1.6.3"
